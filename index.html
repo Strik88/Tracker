@@ -3,75 +3,682 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Striks Tracker</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Striks AI - Habit Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .logout-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
+        :root {
+            --primary-color: #0055A4;
+            --secondary-color: #3498DB;
+            --accent-color: #21D4FD;
+            --hardline-color: #E74C3C;
+            --mainline-color: #3498DB;
+            --softline-color: #2ECC71;
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .btn {
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .habit-btn {
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
         
-        .logout-btn:hover {
-            background-color: #bd2130;
+        .habit-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
         }
         
-        @media (max-width: 600px) {
-            .logout-btn {
-                top: 10px;
-                right: 10px;
-                padding: 6px 10px;
-                font-size: 14px;
-            }
+        .habit-btn:active::after {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .habit-cell {
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .habit-cell:hover {
+            transform: scale(1.05);
+        }
+        
+        .habit-cell.completed {
+            position: relative;
+        }
+        
+        .habit-cell.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .progress-ring {
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .streak-badge {
+            background: linear-gradient(135deg, #0055A4, #21D4FD);
+            color: white;
+            border-radius: 12px;
+            padding: 4px 12px;
+            font-weight: bold;
+        }
+        
+        .hardline { background-color: var(--hardline-color); }
+        .mainline { background-color: var(--mainline-color); }
+        .softline { background-color: var(--softline-color); }
+        
+        .streak-container {
+            background: linear-gradient(135deg, #0055A4, #21D4FD);
+            border-radius: 16px;
+        }
+        
+        .category-header {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .category-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            100% { left: 100%; }
+        }
+        
+        .habit-name-input {
+            background-color: transparent;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            transition: border-color 0.3s ease;
+            width: 100%;
+            outline: none;
+            padding: 4px 0;
+        }
+        
+        .habit-name-input:focus {
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        /* Make sure content is optimized for PDF export */
+        @page {
+            size: auto;
+            margin: 0mm;
+        }
+        
+        html {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
     </style>
 </head>
-<body>
-    <div class="app-container">
-        <header>
-            <h1>Striks Tracker</h1>
-            <button id="logout-btn" class="logout-btn">Uitloggen</button>
+<body class="p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">Striks AI Habit Tracker</h1>
+                    <p class="text-gray-600">Human Led AI Innovation</p>
+                </div>
+                <div class="streak-container p-4 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold">Total Streak Power</h3>
+                            <div class="text-4xl font-bold mt-1 pulse" id="total-streak">0</div>
+                        </div>
+                        <div class="ml-6">
+                            <svg width="80" height="80" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#ffffff33" stroke-width="8" />
+                                <circle class="progress-ring" cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="8" 
+                                        stroke-dasharray="283" stroke-dashoffset="283" transform="rotate(-90 50 50)" />
+                            </svg>
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-2xl font-bold" id="total-percentage">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </header>
         
-        <main>
-            <div class="input-section">
-                <input type="text" id="new-item" placeholder="Add a new item...">
-                <button id="add-button">Add</button>
+        <!-- Weekly Date Navigation -->
+        <div class="card p-4 mb-8">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xl font-bold" id="current-week-label">This Week</h2>
+                <div class="flex space-x-2">
+                    <button id="prev-week" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="current-week" class="btn bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
+                        Today
+                    </button>
+                    <button id="next-week" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
             
-            <div class="items-container">
-                <h2>My Items</h2>
-                <ul id="items-list">
-                    <!-- Items will be added here dynamically -->
-                </ul>
+            <div class="grid grid-cols-8 gap-2">
+                <div class="col-span-1"></div>
+                <div class="text-center font-medium text-gray-600">Mon</div>
+                <div class="text-center font-medium text-gray-600">Tue</div>
+                <div class="text-center font-medium text-gray-600">Wed</div>
+                <div class="text-center font-medium text-gray-600">Thu</div>
+                <div class="text-center font-medium text-gray-600">Fri</div>
+                <div class="text-center font-medium text-gray-600">Sat</div>
+                <div class="text-center font-medium text-gray-600">Sun</div>
             </div>
-        </main>
+            <div class="grid grid-cols-8 gap-2 mb-2" id="date-row">
+                <div class="text-right pr-2 font-medium text-gray-600">Dates</div>
+                <!-- Dates will be inserted here by JavaScript -->
+            </div>
+        </div>
         
-        <footer>
-            <p>Created by Strik</p>
+        <!-- Habit Tracking Sections -->
+        <div class="grid grid-cols-1 gap-8">
+            <!-- Hardline Habits Section -->
+            <div class="card p-6">
+                <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Hardline Habits</h2>
+                    <div class="flex items-center">
+                        <span class="mr-2">Completion:</span>
+                        <span class="streak-badge" id="hardline-percentage">0%</span>
+                    </div>
+                </div>
+                <div class="hardline-habits" id="hardline-habits">
+                    <!-- Hardline habits will be inserted here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Mainline Habits Section -->
+            <div class="card p-6">
+                <div class="category-header bg-blue-500 text-white p-3 mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Mainline Habits</h2>
+                    <div class="flex items-center">
+                        <span class="mr-2">Completion:</span>
+                        <span class="streak-badge" id="mainline-percentage">0%</span>
+                    </div>
+                </div>
+                <div class="mainline-habits" id="mainline-habits">
+                    <!-- Mainline habits will be inserted here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Softline Habits Section -->
+            <div class="card p-6">
+                <div class="category-header bg-green-500 text-white p-3 mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Softline Habits</h2>
+                    <div class="flex items-center">
+                        <span class="mr-2">Completion:</span>
+                        <span class="streak-badge" id="softline-percentage">0%</span>
+                    </div>
+                </div>
+                <div class="softline-habits" id="softline-habits">
+                    <!-- Softline habits will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Summary Section -->
+        <div class="card p-6 mt-8">
+            <h2 class="text-2xl font-bold mb-4">Weekly Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-red-500 mb-2">Hardline Progress</h3>
+                    <div class="flex items-center">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-red-500 h-2.5 rounded-full" id="hardline-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="ml-2 text-lg font-bold" id="hardline-count">0/0</span>
+                    </div>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-blue-500 mb-2">Mainline Progress</h3>
+                    <div class="flex items-center">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-blue-500 h-2.5 rounded-full" id="mainline-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="ml-2 text-lg font-bold" id="mainline-count">0/0</span>
+                    </div>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-green-500 mb-2">Softline Progress</h3>
+                    <div class="flex items-center">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-green-500 h-2.5 rounded-full" id="softline-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="ml-2 text-lg font-bold" id="softline-count">0/0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-10 text-center text-gray-500 text-sm">
+            <p>Striks AI Consulting © 2023 - Human Led AI Innovation</p>
         </footer>
     </div>
     
-    <script src="app.js"></script>
     <script>
-        // Controleer login status
         document.addEventListener('DOMContentLoaded', function() {
-            if (localStorage.getItem('isLoggedIn') !== 'true') {
-                window.location.href = 'login.html';
+            // Initializing habit data structure
+            const habitData = {
+                hardline: [
+                    { id: 'h1', name: 'Morning Meditation', completed: {} },
+                    { id: 'h2', name: 'Exercise 30 minutes', completed: {} },
+                    { id: 'h3', name: 'Read 10 pages', completed: {} },
+                    { id: 'h4', name: 'Drink 8 glasses of water', completed: {} },
+                    { id: 'h5', name: 'No screen time after 10pm', completed: {} }
+                ],
+                mainline: [
+                    { id: 'm1', name: 'Journal Writing', completed: {} },
+                    { id: 'm2', name: 'Learn Something New', completed: {} },
+                    { id: 'm3', name: 'Connect with Someone', completed: {} },
+                    { id: 'm4', name: 'Healthy Eating', completed: {} },
+                    { id: 'm5', name: 'Plan Next Day', completed: {} }
+                ],
+                softline: [
+                    { id: 's1', name: 'Mindfulness Moment', completed: {} },
+                    { id: 's2', name: 'Gratitude Practice', completed: {} },
+                    { id: 's3', name: 'Stretch Break', completed: {} },
+                    { id: 's4', name: 'Declutter Space', completed: {} },
+                    { id: 's5', name: 'Creative Expression', completed: {} }
+                ]
+            };
+            
+            // Load data from localStorage if exists
+            const savedData = localStorage.getItem('striksHabitData');
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    // Merge saved data with default structure
+                    ['hardline', 'mainline', 'softline'].forEach(category => {
+                        if (parsedData[category]) {
+                            parsedData[category].forEach((habit, index) => {
+                                if (index < 5) { // Ensure we only load 5 habits per category
+                                    habitData[category][index] = habit;
+                                }
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error loading saved habit data:', e);
+                }
             }
             
-            // Uitlog knop functionaliteit
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                localStorage.removeItem('isLoggedIn');
-                window.location.href = 'login.html';
+            // Current date and week tracking
+            let currentDate = new Date();
+            let weekOffset = 0;
+            
+            // Format date as YYYY-MM-DD
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
+            // Get dates for the current week
+            function getWeekDates(offset = 0) {
+                const dates = [];
+                const now = new Date();
+                now.setDate(now.getDate() + (offset * 7));
+                const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+                const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to get Monday
+                
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(now.setDate(diff + i));
+                    dates.push(date);
+                }
+                
+                return dates;
+            }
+            
+            // Update the date row with dates for the current week
+            function updateDateRow() {
+                const dateRow = document.getElementById('date-row');
+                // Clear existing dates except for the first cell
+                while (dateRow.children.length > 1) {
+                    dateRow.removeChild(dateRow.lastChild);
+                }
+                
+                const weekDates = getWeekDates(weekOffset);
+                
+                // Update week label
+                const firstDay = weekDates[0];
+                const lastDay = weekDates[6];
+                const firstMonth = firstDay.toLocaleString('default', { month: 'short' });
+                const lastMonth = lastDay.toLocaleString('default', { month: 'short' });
+                
+                let weekLabel;
+                if (firstMonth === lastMonth) {
+                    weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
+                } else {
+                    weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastMonth} ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
+                }
+                
+                document.getElementById('current-week-label').textContent = weekLabel;
+                
+                // Add dates to the row
+                weekDates.forEach(date => {
+                    const dateCell = document.createElement('div');
+                    dateCell.className = 'text-center font-bold';
+                    
+                    // Highlight today's date
+                    const today = new Date();
+                    if (date.toDateString() === today.toDateString() && weekOffset === 0) {
+                        dateCell.className += ' text-blue-600';
+                    }
+                    
+                    dateCell.textContent = date.getDate();
+                    dateRow.appendChild(dateCell);
+                });
+                
+                // Redraw habits grid to match dates
+                updateHabitsGrid();
+            }
+            
+            // Generate the habit tracking grid
+            function generateHabitRow(habit, category) {
+                const habitRow = document.createElement('div');
+                habitRow.className = 'grid grid-cols-8 gap-2 mb-3';
+                
+                // Habit name cell
+                const nameCell = document.createElement('div');
+                nameCell.className = 'pr-2 flex items-center';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'habit-name-input';
+                nameInput.value = habit.name;
+                nameInput.placeholder = 'Enter habit name';
+                nameInput.dataset.id = habit.id;
+                nameInput.dataset.category = category;
+                nameInput.addEventListener('change', function() {
+                    updateHabitName(this.dataset.category, this.dataset.id, this.value);
+                });
+                
+                nameCell.appendChild(nameInput);
+                habitRow.appendChild(nameCell);
+                
+                // Get current week dates
+                const weekDates = getWeekDates(weekOffset);
+                
+                // Create cells for each day of the week
+                weekDates.forEach(date => {
+                    const dateString = formatDate(date);
+                    const cell = document.createElement('div');
+                    cell.className = `habit-cell ${category} h-10 flex items-center justify-center`;
+                    cell.style.opacity = '0.3';
+                    
+                    if (habit.completed && habit.completed[dateString]) {
+                        cell.classList.add('completed');
+                        cell.style.opacity = '1';
+                    }
+                    
+                    cell.dataset.date = dateString;
+                    cell.dataset.habitId = habit.id;
+                    cell.dataset.category = category;
+                    
+                    cell.addEventListener('click', function() {
+                        toggleHabitCompletion(this.dataset.category, this.dataset.habitId, this.dataset.date);
+                    });
+                    
+                    habitRow.appendChild(cell);
+                });
+                
+                return habitRow;
+            }
+            
+            // Update the display of habit tracking grids
+            function updateHabitsGrid() {
+                const categories = ['hardline', 'mainline', 'softline'];
+                
+                categories.forEach(category => {
+                    const container = document.getElementById(`${category}-habits`);
+                    container.innerHTML = ''; // Clear existing rows
+                    
+                    habitData[category].forEach(habit => {
+                        const row = generateHabitRow(habit, category);
+                        container.appendChild(row);
+                    });
+                });
+                
+                updateStats();
+            }
+            
+            // Toggle habit completion status
+            function toggleHabitCompletion(category, habitId, date) {
+                const habit = habitData[category].find(h => h.id === habitId);
+                if (!habit.completed) {
+                    habit.completed = {};
+                }
+                
+                if (habit.completed[date]) {
+                    delete habit.completed[date];
+                } else {
+                    habit.completed[date] = true;
+                }
+                
+                // Save to localStorage
+                saveHabitData();
+                
+                // Update the UI
+                updateHabitsGrid();
+            }
+            
+            // Update habit name
+            function updateHabitName(category, habitId, newName) {
+                const habit = habitData[category].find(h => h.id === habitId);
+                habit.name = newName;
+                
+                // Save to localStorage
+                saveHabitData();
+            }
+            
+            // Save habit data to localStorage
+            function saveHabitData() {
+                localStorage.setItem('striksHabitData', JSON.stringify(habitData));
+            }
+            
+            // Calculate and update statistics
+            function updateStats() {
+                const categories = ['hardline', 'mainline', 'softline'];
+                const weekDates = getWeekDates(weekOffset);
+                
+                let totalCompleted = 0;
+                let totalPossible = 0;
+                
+                categories.forEach(category => {
+                    let categoryCompleted = 0;
+                    let categoryPossible = habitData[category].length * 7; // 7 days
+                    
+                    habitData[category].forEach(habit => {
+                        weekDates.forEach(date => {
+                            const dateString = formatDate(date);
+                            if (habit.completed && habit.completed[dateString]) {
+                                categoryCompleted++;
+                                totalCompleted++;
+                            }
+                        });
+                    });
+                    
+                    totalPossible += categoryPossible;
+                    
+                    // Update category stats
+                    const percentage = categoryPossible > 0 ? Math.round((categoryCompleted / categoryPossible) * 100) : 0;
+                    document.getElementById(`${category}-percentage`).textContent = `${percentage}%`;
+                    document.getElementById(`${category}-progress`).style.width = `${percentage}%`;
+                    document.getElementById(`${category}-count`).textContent = `${categoryCompleted}/${categoryPossible}`;
+                });
+                
+                // Update total stats
+                const totalPercentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+                document.getElementById('total-percentage').textContent = `${totalPercentage}%`;
+                
+                // Update progress ring
+                const circle = document.querySelector('.progress-ring');
+                const radius = circle.r.baseVal.value;
+                const circumference = 2 * Math.PI * radius;
+                circle.style.strokeDasharray = circumference;
+                const offset = circumference - (totalPercentage / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+                
+                // Calculate streak
+                calculateStreak();
+            }
+            
+            // Calculate streak power
+            function calculateStreak() {
+                let currentStreak = 0;
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                // Check if any habits were completed today or yesterday
+                const todayString = formatDate(today);
+                const yesterdayString = formatDate(yesterday);
+                
+                let todayCompleted = false;
+                let yesterdayCompleted = false;
+                
+                // Check if habits were completed today
+                ['hardline', 'mainline', 'softline'].forEach(category => {
+                    habitData[category].forEach(habit => {
+                        if (habit.completed && habit.completed[todayString]) {
+                            todayCompleted = true;
+                        }
+                        if (habit.completed && habit.completed[yesterdayString]) {
+                            yesterdayCompleted = true;
+                        }
+                    });
+                });
+                
+                // Start counting streak from today or yesterday
+                let checkDate;
+                if (todayCompleted) {
+                    checkDate = new Date(today);
+                    currentStreak = 1;
+                } else if (yesterdayCompleted) {
+                    checkDate = new Date(yesterday);
+                    currentStreak = 1;
+                } else {
+                    // No recent completions
+                    document.getElementById('total-streak').textContent = '0';
+                    return;
+                }
+                
+                // Count backwards to find the streak
+                while (true) {
+                    checkDate.setDate(checkDate.getDate() - 1);
+                    const checkDateString = formatDate(checkDate);
+                    
+                    let dayCompleted = false;
+                    ['hardline', 'mainline', 'softline'].forEach(category => {
+                        habitData[category].forEach(habit => {
+                            if (habit.completed && habit.completed[checkDateString]) {
+                                dayCompleted = true;
+                            }
+                        });
+                    });
+                    
+                    if (dayCompleted) {
+                        currentStreak++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                document.getElementById('total-streak').textContent = currentStreak;
+            }
+            
+            // Navigation event handlers
+            document.getElementById('prev-week').addEventListener('click', function() {
+                weekOffset--;
+                updateDateRow();
             });
+            
+            document.getElementById('next-week').addEventListener('click', function() {
+                weekOffset++;
+                updateDateRow();
+            });
+            
+            document.getElementById('current-week').addEventListener('click', function() {
+                weekOffset = 0;
+                updateDateRow();
+            });
+            
+            // Initialize
+            updateDateRow();
         });
     </script>
 </body>
