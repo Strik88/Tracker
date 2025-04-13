@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Striks AI - Habit Tracker</title>
+    <title>MaxIan Mastery - Habit Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
@@ -535,12 +535,15 @@
       
       // PMOHM speciale habit data
       let pmohmData = {
-        streaks: [],  // Array van voorgaande streaks
+        streaks: [],  // Array van objecten: {start: "YYYY-MM-DD", end: "YYYY-MM-DD", length: N}
         currentStreak: 0,
         highestStreak: 0,
-        completed: {}, // Key: YYYY-MM-DD, Value: true/false
-        lastCompleted: null,
-        total: 0
+        completedDates: {}, // Key: YYYY-MM-DD, Value: true/false
+        totalDays: 0,       // Totaal aantal dagen in tracking
+        completed: 0,       // Totaal aantal dagen met checkbox
+        avgStreak: 0,       // Gemiddelde streak lengte
+        avgLast5: 0,        // Gemiddelde van laatste 5 streaks
+        apexRatio: 0        // Completed / totalDays
       };
       
       // Standaard habits - deze worden alleen gebruikt als de gebruiker nog geen data heeft
@@ -627,10 +630,14 @@
               
               // Zorg ervoor dat alle benodigde velden aanwezig zijn
               if (!pmohmData.streaks) pmohmData.streaks = [];
-              if (!pmohmData.completed) pmohmData.completed = {};
+              if (!pmohmData.completedDates) pmohmData.completedDates = {};
               if (pmohmData.currentStreak === undefined) pmohmData.currentStreak = 0;
               if (pmohmData.highestStreak === undefined) pmohmData.highestStreak = 0;
-              if (pmohmData.total === undefined) pmohmData.total = 0;
+              if (pmohmData.totalDays === undefined) pmohmData.totalDays = 0;
+              if (pmohmData.completed === undefined) pmohmData.completed = 0;
+              if (pmohmData.avgStreak === undefined) pmohmData.avgStreak = 0;
+              if (pmohmData.avgLast5 === undefined) pmohmData.avgLast5 = 0;
+              if (pmohmData.apexRatio === undefined) pmohmData.apexRatio = 0;
               
               // Bereken huidige streak
               calculatePMOHMStreak();
@@ -1026,7 +1033,7 @@
           cell.style.backgroundColor = 'var(--primary-color)';
           cell.style.opacity = '0.3';
           
-          if (pmohmData.completed && pmohmData.completed[dateString]) {
+          if (pmohmData.completedDates && pmohmData.completedDates[dateString]) {
             cell.classList.add('completed');
             cell.style.opacity = '1';
           }
@@ -1042,26 +1049,165 @@
         
         container.appendChild(pmohmRow);
         
-        // Update PMOHM history
-        updatePMOHMHistory();
+        // Update PMOHM history if on the main page
+        if (document.getElementById('pmohm-history')) {
+          updatePMOHMHistory();
+        }
         
         // Update PMOHM stats
         updatePMOHMStats();
       }
       
+      // Calculate PMOHM streak
+      function calculatePMOHMStreak() {
+        if (!pmohmData.completedDates) {
+          pmohmData.completedDates = {};
+        }
+        
+        // Convert from old format if needed
+        if (pmohmData.completed && typeof pmohmData.completed === 'object' && !Array.isArray(pmohmData.completed)) {
+          pmohmData.completedDates = { ...pmohmData.completed };
+          delete pmohmData.completed;
+        }
+        
+        // Reset current streak
+        pmohmData.currentStreak = 0;
+        
+        // Find all completed dates
+        const completedDates = Object.keys(pmohmData.completedDates)
+          .filter(date => pmohmData.completedDates[date])
+          .map(date => new Date(date))
+          .sort((a, b) => a - b); // Sort ascending
+        
+        if (completedDates.length === 0) {
+          pmohmData.completed = 0;
+          pmohmData.totalDays = 0;
+          pmohmData.apexRatio = 0;
+          pmohmData.avgStreak = 0;
+          pmohmData.avgLast5 = 0;
+          return;
+        }
+        
+        // Count total completed days
+        pmohmData.completed = completedDates.length;
+        
+        // Count total days in tracking (from first to last date in system)
+        const firstDate = new Date(Math.min(...completedDates));
+        const lastDate = new Date(Math.max(...completedDates));
+        const totalDays = Math.round((lastDate - firstDate) / (1000 * 60 * 60 * 24)) + 1;
+        pmohmData.totalDays = totalDays;
+        
+        // Calculate apex ratio (completed / total days)
+        pmohmData.apexRatio = totalDays > 0 ? pmohmData.completed / totalDays : 0;
+        
+        // Today and yesterday for streak calculation
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Find all the streaks
+        const streaks = [];
+        let currentStreakStart = null;
+        let currentStreakEnd = null;
+        
+        // Sort dates by ascending order for streak calculation
+        completedDates.sort((a, b) => a - b);
+        
+        for (let i = 0; i < completedDates.length; i++) {
+          const currentDate = completedDates[i];
+          currentDate.setHours(0, 0, 0, 0);
+          
+          if (currentStreakStart === null) {
+            // Start new streak
+            currentStreakStart = new Date(currentDate);
+            currentStreakEnd = new Date(currentDate);
+          } else {
+            // Check if this date is consecutive
+            const expectedNextDate = new Date(currentStreakEnd);
+            expectedNextDate.setDate(expectedNextDate.getDate() + 1);
+            
+            if (currentDate.getTime() === expectedNextDate.getTime()) {
+              // Continue current streak
+              currentStreakEnd = new Date(currentDate);
+            } else {
+              // End current streak and add to list
+              const streakLength = Math.round((currentStreakEnd - currentStreakStart) / (1000 * 60 * 60 * 24)) + 1;
+              streaks.push({
+                start: formatDate(currentStreakStart),
+                end: formatDate(currentStreakEnd),
+                length: streakLength
+              });
+              
+              // Start new streak
+              currentStreakStart = new Date(currentDate);
+              currentStreakEnd = new Date(currentDate);
+            }
+          }
+        }
+        
+        // Add last streak if exists
+        if (currentStreakStart !== null) {
+          const streakLength = Math.round((currentStreakEnd - currentStreakStart) / (1000 * 60 * 60 * 24)) + 1;
+          streaks.push({
+            start: formatDate(currentStreakStart),
+            end: formatDate(currentStreakEnd),
+            length: streakLength
+          });
+        }
+        
+        // Store all streaks
+        pmohmData.streaks = streaks;
+        
+        // Find current streak (if the last streak includes yesterday or today)
+        if (streaks.length > 0) {
+          const lastStreak = streaks[streaks.length - 1];
+          const lastStreakEndDate = new Date(lastStreak.end);
+          
+          if (lastStreakEndDate.getTime() === today.getTime() || 
+              lastStreakEndDate.getTime() === yesterday.getTime()) {
+            pmohmData.currentStreak = lastStreak.length;
+          } else {
+            pmohmData.currentStreak = 0;
+          }
+        }
+        
+        // Find highest streak
+        if (streaks.length > 0) {
+          pmohmData.highestStreak = Math.max(...streaks.map(streak => streak.length));
+        } else {
+          pmohmData.highestStreak = 0;
+        }
+        
+        // Calculate average streak
+        if (streaks.length > 0) {
+          const sum = streaks.reduce((total, streak) => total + streak.length, 0);
+          pmohmData.avgStreak = Math.round((sum / streaks.length) * 10) / 10;
+        } else {
+          pmohmData.avgStreak = 0;
+        }
+        
+        // Calculate average of last 5 streaks
+        if (streaks.length > 0) {
+          const last5 = streaks.slice(-5);
+          const sum = last5.reduce((total, streak) => total + streak.length, 0);
+          pmohmData.avgLast5 = Math.round((sum / last5.length) * 10) / 10;
+        } else {
+          pmohmData.avgLast5 = 0;
+        }
+      }
+      
       // Toggle PMOHM completion
       function togglePMOHMCompletion(date) {
-        if (!pmohmData.completed) {
-          pmohmData.completed = {};
+        if (!pmohmData.completedDates) {
+          pmohmData.completedDates = {};
         }
         
         // Toggle completion
-        if (pmohmData.completed[date]) {
-          delete pmohmData.completed[date];
-          if (pmohmData.total > 0) pmohmData.total--;
+        if (pmohmData.completedDates[date]) {
+          delete pmohmData.completedDates[date];
         } else {
-          pmohmData.completed[date] = true;
-          pmohmData.total++;
+          pmohmData.completedDates[date] = true;
         }
         
         // Update PMOHM streak information
@@ -1074,90 +1220,43 @@
         updatePMOHMGrid();
       }
       
-      // Calculate PMOHM streak
-      function calculatePMOHMStreak() {
-        // Reset current streak
-        pmohmData.currentStreak = 0;
-        
-        // Find most recent completion
-        const today = new Date();
-        const completedDates = Object.keys(pmohmData.completed || {}).filter(date => pmohmData.completed[date]);
-        
-        if (completedDates.length === 0) return;
-        
-        // Sort dates in descending order
-        completedDates.sort((a, b) => new Date(b) - new Date(a));
-        
-        // Most recent completion
-        const lastDate = new Date(completedDates[0]);
-        pmohmData.lastCompleted = formatDate(lastDate);
-        
-        // Check if completed today or yesterday
-        const todayString = formatDate(today);
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayString = formatDate(yesterday);
-        
-        // If not completed today or yesterday, streak is over
-        if (completedDates[0] !== todayString && completedDates[0] !== yesterdayString) {
-          // Save the last streak to history if it was significant
-          if (pmohmData.currentStreak > 1) {
-            pmohmData.streaks.push(pmohmData.currentStreak);
-            // Keep only last 10 streaks
-            if (pmohmData.streaks.length > 10) {
-              pmohmData.streaks.shift();
-            }
-          }
-          pmohmData.currentStreak = 0;
-          return;
-        }
-        
-        // Count backwards to find current streak
-        let checkDate = new Date(completedDates[0]);
-        pmohmData.currentStreak = 1;
-        
-        while (true) {
-          checkDate.setDate(checkDate.getDate() - 1);
-          const checkDateString = formatDate(checkDate);
-          
-          if (pmohmData.completed && pmohmData.completed[checkDateString]) {
-            pmohmData.currentStreak++;
-          } else {
-            break;
-          }
-        }
-        
-        // Update highest streak if needed
-        if (pmohmData.currentStreak > pmohmData.highestStreak) {
-          pmohmData.highestStreak = pmohmData.currentStreak;
-        }
-      }
-      
       // Update PMOHM stats display
       function updatePMOHMStats() {
         document.getElementById('pmohm-streak').textContent = pmohmData.currentStreak;
-        document.getElementById('pmohm-highest-streak').textContent = pmohmData.highestStreak;
-        document.getElementById('pmohm-total').textContent = pmohmData.total;
         
-        // Calculate average of last 5 streaks
-        let avg = 0;
-        const streaks = [...pmohmData.streaks];
-        if (pmohmData.currentStreak > 0) {
-          streaks.push(pmohmData.currentStreak);
+        // Calculate apex percentage for current week
+        const weekDates = getWeekDates(weekOffset);
+        let completedThisWeek = 0;
+        
+        weekDates.forEach(date => {
+          const dateStr = formatDate(date);
+          if (pmohmData.completedDates && pmohmData.completedDates[dateStr]) {
+            completedThisWeek++;
+          }
+        });
+        
+        const weekApex = Math.round((completedThisWeek / 7) * 100);
+        document.getElementById('pmohm-apex-week').textContent = `${weekApex}%`;
+        
+        // On the details page we'll display extended statistics
+        if (document.getElementById('pmohm-highest-streak')) {
+          document.getElementById('pmohm-highest-streak').textContent = pmohmData.highestStreak;
+          document.getElementById('pmohm-avg-streak').textContent = pmohmData.avgStreak;
+          document.getElementById('pmohm-total').textContent = pmohmData.completed;
+          
+          // If we're on the details page, update more stats
+          if (document.getElementById('pmohm-apex-total')) {
+            const apexPercent = Math.round(pmohmData.apexRatio * 100);
+            document.getElementById('pmohm-apex-total').textContent = `${apexPercent}%`;
+          }
         }
-        
-        if (streaks.length > 0) {
-          const last5 = streaks.slice(-5);
-          const sum = last5.reduce((a, b) => a + b, 0);
-          avg = Math.round((sum / last5.length) * 10) / 10; // Round to 1 decimal
-        }
-        
-        document.getElementById('pmohm-avg-streak').textContent = avg;
       }
       
       // Update PMOHM history display
       function updatePMOHMHistory() {
         const historyContainer = document.getElementById('pmohm-history');
+        if (!historyContainer) return;
+        
         historyContainer.innerHTML = '';
         
         // Show history for past 4 weeks
@@ -1182,7 +1281,7 @@
             cell.style.backgroundColor = 'var(--primary-color)';
             cell.style.opacity = '0.3';
             
-            if (pmohmData.completed && pmohmData.completed[dateString]) {
+            if (pmohmData.completedDates && pmohmData.completedDates[dateString]) {
               cell.classList.add('completed');
               cell.style.opacity = '1';
             }
@@ -1209,7 +1308,7 @@
                 <div class="text-center md:text-left logo-container">
                     <img src="Log.png" alt="Striks AI Logo" class="logo">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-800">Habit Tracker</h1>
+                        <h1 class="text-3xl font-bold text-gray-800">MaxIan Mastery</h1>
                         <p class="tagline">Human Led AI Innovation</p>
                     </div>
                 </div>
@@ -1281,10 +1380,19 @@
             <!-- PMOHM Special Habit Section -->
             <div class="card p-6 border-2" style="border-color: var(--primary-color);">
                 <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color));">
-                    <h2 class="text-xl font-bold">PMOHM Habit Tracker</h2>
-                    <div class="flex items-center">
-                        <span class="mr-2">Current Streak:</span>
-                        <span class="streak-badge" id="pmohm-streak">0</span>
+                    <h2 class="text-xl font-bold">PMOHM Tracker</h2>
+                    <div class="flex items-center space-x-3">
+                        <div>
+                            <span class="mr-1">Streak:</span>
+                            <span class="streak-badge" id="pmohm-streak">0</span>
+                        </div>
+                        <div>
+                            <span class="mr-1">Apex:</span>
+                            <span class="streak-badge" id="pmohm-apex-week">0%</span>
+                        </div>
+                        <a href="pmohm-details.html" class="bg-white bg-opacity-20 hover:bg-opacity-30 rounded px-2 py-1 text-sm transition-all">
+                            <i class="fas fa-chart-line mr-1"></i> Details
+                        </a>
                     </div>
                 </div>
                 

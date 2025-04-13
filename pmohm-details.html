@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMOHM Details - MaxIan Mastery</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Striks AI Merkkleurenpalet */
+            --primary-color: #1A2B50; /* Striks Marineblauw */
+            --secondary-color: #3BC5C9; /* AI Turquoise */
+            --accent-color: #C64B8C; /* Menselijk Magenta */
+            --hardline-color: #F27052; /* Zonsopgang Oranje */
+            --mainline-color: #4B99D2; /* Oceaan Blauw */
+            --softline-color: #8A4E85; /* Diep Paars */
+            --bg-color: #F7F9FC; /* Lichtgrijs */
+            --card-bg: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --highlight-color: #F9B854; /* Gouden Inzicht */
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .btn {
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .calendar-day {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .calendar-day:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .calendar-day.completed {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .calendar-day.today {
+            border-color: var(--accent-color);
+            border-width: 2px;
+            font-weight: bold;
+        }
+        
+        .streak-timeline {
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        .streak-marker {
+            position: absolute;
+            height: 20px;
+            top: -5px;
+            background-color: var(--accent-color);
+            border-radius: 5px;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo {
+            height: 50px;
+            margin-right: 15px;
+        }
+        
+        .tagline {
+            font-weight: 300;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .calendar-container {
+                grid-template-columns: repeat(7, 1fr);
+            }
+            
+            .calendar-day {
+                width: 35px;
+                height: 35px;
+                font-size: 0.9rem;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .calendar-day {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+            
+            .stat-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .stat-value {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase configuratie
+        const firebaseConfig = {
+          apiKey: "AIzaSyCjAXyIEEyhvVAadd4v4it1bHoWhJXSmd8",
+          authDomain: "striks-habit-tracker.firebaseapp.com",
+          projectId: "striks-habit-tracker",
+          storageBucket: "striks-habit-tracker.firebasestorage.app",
+          messagingSenderId: "583114774251",
+          appId: "1:583114774251:web:7df7c25e0ed0b08036d0ae",
+          measurementId: "G-P02LE94672"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // Login state observer
+        let currentUser = null;
+        
+        // PMOHM data
+        let pmohmData = {
+          streaks: [],  // Array van objecten: {start: "YYYY-MM-DD", end: "YYYY-MM-DD", length: N}
+          currentStreak: 0,
+          highestStreak: 0,
+          completedDates: {}, // Key: YYYY-MM-DD, Value: true/false
+          totalDays: 0,       // Totaal aantal dagen in tracking
+          completed: 0,       // Totaal aantal dagen met checkbox
+          avgStreak: 0,       // Gemiddelde streak lengte
+          avgLast5: 0,        // Gemiddelde van laatste 5 streaks
+          apexRatio: 0        // Completed / totalDays
+        };
+        
+        // Current date handling
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+        
+        // On document load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up buttons
+            document.getElementById('back-button').addEventListener('click', function() {
+                window.location.href = 'index.html';
+            });
+            
+            document.getElementById('prev-month').addEventListener('click', function() {
+                navigateMonth(-1);
+            });
+            
+            document.getElementById('next-month').addEventListener('click', function() {
+                navigateMonth(1);
+            });
+            
+            document.getElementById('today-button').addEventListener('click', function() {
+                currentMonth = new Date().getMonth();
+                currentYear = new Date().getFullYear();
+                renderCalendar();
+            });
+            
+            // Check auth
+            auth.onAuthStateChanged(async function(user) {
+                if (!user) {
+                    // Not logged in, back to login page
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // User is logged in
+                currentUser = user;
+                
+                // Load user data
+                await loadUserData();
+                renderCalendar();
+                renderStats();
+                renderStreakTimeline();
+            });
+        });
+        
+        // Load user data from Firebase
+        async function loadUserData() {
+            try {
+                if (!currentUser) return;
+                
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    
+                    if (userData.pmohm) {
+                        pmohmData = userData.pmohm;
+                        
+                        // Ensure all required fields are present
+                        if (!pmohmData.streaks) pmohmData.streaks = [];
+                        if (!pmohmData.completedDates) pmohmData.completedDates = {};
+                        
+                        // Handle legacy data format
+                        if (pmohmData.completed && typeof pmohmData.completed === 'object') {
+                            pmohmData.completedDates = { ...pmohmData.completed };
+                            delete pmohmData.completed;
+                        }
+                        
+                        if (pmohmData.currentStreak === undefined) pmohmData.currentStreak = 0;
+                        if (pmohmData.highestStreak === undefined) pmohmData.highestStreak = 0;
+                        if (pmohmData.totalDays === undefined) pmohmData.totalDays = 0;
+                        if (pmohmData.completed === undefined) pmohmData.completed = 0;
+                        if (pmohmData.avgStreak === undefined) pmohmData.avgStreak = 0;
+                        if (pmohmData.avgLast5 === undefined) pmohmData.avgLast5 = 0;
+                        if (pmohmData.apexRatio === undefined) pmohmData.apexRatio = 0;
+                        
+                        // Calculate streaks and stats
+                        calculatePMOHMStreak();
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading user data:", error);
+            }
+        }
+        
+        // Save PMOHM data to Firebase
+        async function saveUserData() {
+            try {
+                if (!currentUser) return;
+                
+                await db.collection('users').doc(currentUser.uid).set({
+                    pmohm: pmohmData,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                
+            } catch (error) {
+                console.error("Error saving user data:", error);
+            }
+        }
+        
+        // Format date as YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Toggle date completion
+        function toggleDateCompletion(dateString) {
+            if (!pmohmData.completedDates) {
+                pmohmData.completedDates = {};
+            }
+            
+            if (pmohmData.completedDates[dateString]) {
+                delete pmohmData.completedDates[dateString];
+            } else {
+                pmohmData.completedDates[dateString] = true;
+            }
+            
+            // Calculate streaks and stats
+            calculatePMOHMStreak();
+            
+            // Save data
+            saveUserData();
+            
+            // Update UI
+            renderCalendar();
+            renderStats();
+            renderStreakTimeline();
+        }
+        
+        // Navigate to prev/next month
+        function navigateMonth(offset) {
+            let newDate = new Date(currentYear, currentMonth + offset, 1);
+            currentMonth = newDate.getMonth();
+            currentYear = newDate.getFullYear();
+            renderCalendar();
+        }
+        
+        // Render the calendar for current month
+        function renderCalendar() {
+            const calendarContainer = document.getElementById('calendar-container');
+            const monthYearLabel = document.getElementById('month-year-label');
+            
+            // Set month and year label
+            monthYearLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+            
+            // Clear calendar
+            calendarContainer.innerHTML = '';
+            
+            // Get first day of the month
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            
+            // Get day of week for first day (0 = Sunday, 1 = Monday, etc.)
+            let dayOfWeek = firstDay.getDay();
+            if (dayOfWeek === 0) dayOfWeek = 7; // Sunday = 7 for offset calculation
+            
+            // Create header row for days of week
+            const daysOfWeek = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            daysOfWeek.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'text-center font-bold text-sm text-gray-600';
+                dayHeader.textContent = day;
+                calendarContainer.appendChild(dayHeader);
+            });
+            
+            // Add empty cells for days before first day of month
+            for (let i = 1; i < dayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                calendarContainer.appendChild(emptyCell);
+            }
+            
+            // Add days of the month
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day m-1';
+                
+                const date = new Date(currentYear, currentMonth, i);
+                const dateString = formatDate(date);
+                
+                // Check if day is completed
+                if (pmohmData.completedDates && pmohmData.completedDates[dateString]) {
+                    dayCell.classList.add('completed');
+                }
+                
+                // Check if day is today
+                if (date.getTime() === today.getTime()) {
+                    dayCell.classList.add('today');
+                }
+                
+                dayCell.textContent = i;
+                dayCell.dataset.date = dateString;
+                dayCell.addEventListener('click', function() {
+                    toggleDateCompletion(this.dataset.date);
+                });
+                
+                calendarContainer.appendChild(dayCell);
+            }
+        }
+        
+        // Render statistics
+        function renderStats() {
+            document.getElementById('current-streak').textContent = pmohmData.currentStreak;
+            document.getElementById('highest-streak').textContent = pmohmData.highestStreak;
+            document.getElementById('avg-streak').textContent = pmohmData.avgStreak;
+            document.getElementById('last-5-avg').textContent = pmohmData.avgLast5;
+            document.getElementById('total-completions').textContent = pmohmData.completed;
+            
+            // Calculate apex percentage
+            const apexPercent = Math.round(pmohmData.apexRatio * 100);
+            document.getElementById('apex-percentage').textContent = `${apexPercent}%`;
+        }
+        
+        // Render streak timeline
+        function renderStreakTimeline() {
+            const timelineContainer = document.getElementById('streak-timeline');
+            timelineContainer.innerHTML = '';
+            
+            if (pmohmData.streaks.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'text-center text-gray-500 py-4';
+                emptyMessage.textContent = 'No streaks recorded yet';
+                timelineContainer.appendChild(emptyMessage);
+                return;
+            }
+            
+            // Find the longest streak for scaling
+            const maxStreak = Math.max(...pmohmData.streaks.map(streak => streak.length));
+            
+            // Create timeline
+            const timeline = document.createElement('div');
+            timeline.className = 'streak-timeline';
+            
+            // Add streak markers
+            pmohmData.streaks.forEach((streak, index) => {
+                const marker = document.createElement('div');
+                marker.className = 'streak-marker';
+                
+                // Calculate position (distribute evenly)
+                const position = (index / (pmohmData.streaks.length - 1)) * 100;
+                marker.style.left = `${position}%`;
+                
+                // Calculate width based on streak length relative to max
+                const width = (streak.length / maxStreak) * 100;
+                marker.style.width = `${Math.max(4, width)}%`; // Minimum 4% width for visibility
+                
+                // Add tooltip with streak info
+                marker.setAttribute('title', `${streak.length} days: ${streak.start} to ${streak.end}`);
+                
+                timeline.appendChild(marker);
+            });
+            
+            timelineContainer.appendChild(timeline);
+            
+            // Add streak details table
+            const table = document.createElement('table');
+            table.className = 'w-full mt-4 text-sm';
+            
+            // Add header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['#', 'Start Date', 'End Date', 'Length', ''].forEach(text => {
+                const th = document.createElement('th');
+                th.className = 'text-left py-2 px-2';
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Add body
+            const tbody = document.createElement('tbody');
+            
+            // Sort streaks by date (newest first)
+            const sortedStreaks = [...pmohmData.streaks].sort((a, b) => 
+                new Date(b.end) - new Date(a.end)
+            );
+            
+            sortedStreaks.forEach((streak, index) => {
+                const row = document.createElement('tr');
+                row.className = index % 2 === 0 ? 'bg-gray-50' : '';
+                
+                // Number
+                const numCell = document.createElement('td');
+                numCell.className = 'py-2 px-2';
+                numCell.textContent = index + 1;
+                row.appendChild(numCell);
+                
+                // Start date
+                const startCell = document.createElement('td');
+                startCell.className = 'py-2 px-2';
+                startCell.textContent = streak.start;
+                row.appendChild(startCell);
+                
+                // End date
+                const endCell = document.createElement('td');
+                endCell.className = 'py-2 px-2';
+                endCell.textContent = streak.end;
+                row.appendChild(endCell);
+                
+                // Length
+                const lengthCell = document.createElement('td');
+                lengthCell.className = 'py-2 px-2 font-bold';
+                lengthCell.textContent = `${streak.length} days`;
+                row.appendChild(lengthCell);
+                
+                // Highlight if current streak
+                if (new Date(streak.end).toDateString() === new Date().toDateString() ||
+                    new Date(streak.end).toDateString() === new Date(new Date().setDate(new Date().getDate() - 1)).toDateString()) {
+                    const currentCell = document.createElement('td');
+                    currentCell.className = 'py-2 px-2 text-accent-color';
+                    currentCell.innerHTML = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Current</span>';
+                    row.appendChild(currentCell);
+                } else {
+                    row.appendChild(document.createElement('td'));
+                }
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            timelineContainer.appendChild(table);
+        }
+        
+        // Calculate PMOHM streak and statistics
+        function calculatePMOHMStreak() {
+            if (!pmohmData.completedDates) {
+                pmohmData.completedDates = {};
+            }
+            
+            // Find all completed dates
+            const completedDates = Object.keys(pmohmData.completedDates)
+                .filter(date => pmohmData.completedDates[date])
+                .map(date => new Date(date))
+                .sort((a, b) => a - b); // Sort ascending
+            
+            if (completedDates.length === 0) {
+                pmohmData.completed = 0;
+                pmohmData.totalDays = 0;
+                pmohmData.apexRatio = 0;
+                pmohmData.avgStreak = 0;
+                pmohmData.avgLast5 = 0;
+                pmohmData.currentStreak = 0;
+                pmohmData.highestStreak = 0;
+                pmohmData.streaks = [];
+                return;
+            }
+            
+            // Count total completed days
+            pmohmData.completed = completedDates.length;
+            
+            // Count total days in tracking (from first to last date in system)
+            const firstDate = new Date(Math.min(...completedDates));
+            const lastDate = new Date(Math.max(...completedDates));
+            const totalDays = Math.round((lastDate - firstDate) / (1000 * 60 * 60 * 24)) + 1;
+            pmohmData.totalDays = totalDays;
+            
+            // Calculate apex ratio (completed / total days)
+            pmohmData.apexRatio = totalDays > 0 ? pmohmData.completed / totalDays : 0;
+            
+            // Today and yesterday for streak calculation
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            // Find all the streaks
+            const streaks = [];
+            let currentStreakStart = null;
+            let currentStreakEnd = null;
+            
+            // Sort dates by ascending order for streak calculation
+            completedDates.sort((a, b) => a - b);
+            
+            for (let i = 0; i < completedDates.length; i++) {
+                const currentDate = completedDates[i];
+                currentDate.setHours(0, 0, 0, 0);
+                
+                if (currentStreakStart === null) {
+                    // Start new streak
+                    currentStreakStart = new Date(currentDate);
+                    currentStreakEnd = new Date(currentDate);
+                } else {
+                    // Check if this date is consecutive
+                    const expectedNextDate = new Date(currentStreakEnd);
+                    expectedNextDate.setDate(expectedNextDate.getDate() + 1);
+                    
+                    if (currentDate.getTime() === expectedNextDate.getTime()) {
+                        // Continue current streak
+                        currentStreakEnd = new Date(currentDate);
+                    } else {
+                        // End current streak and add to list
+                        const streakLength = Math.round((currentStreakEnd - currentStreakStart) / (1000 * 60 * 60 * 24)) + 1;
+                        streaks.push({
+                            start: formatDate(currentStreakStart),
+                            end: formatDate(currentStreakEnd),
+                            length: streakLength
+                        });
+                        
+                        // Start new streak
+                        currentStreakStart = new Date(currentDate);
+                        currentStreakEnd = new Date(currentDate);
+                    }
+                }
+            }
+            
+            // Add last streak if exists
+            if (currentStreakStart !== null) {
+                const streakLength = Math.round((currentStreakEnd - currentStreakStart) / (1000 * 60 * 60 * 24)) + 1;
+                streaks.push({
+                    start: formatDate(currentStreakStart),
+                    end: formatDate(currentStreakEnd),
+                    length: streakLength
+                });
+            }
+            
+            // Store all streaks
+            pmohmData.streaks = streaks;
+            
+            // Find current streak (if the last streak includes yesterday or today)
+            if (streaks.length > 0) {
+                const lastStreak = streaks[streaks.length - 1];
+                const lastStreakEndDate = new Date(lastStreak.end);
+                
+                if (lastStreakEndDate.getTime() === today.getTime() || 
+                    lastStreakEndDate.getTime() === yesterday.getTime()) {
+                    pmohmData.currentStreak = lastStreak.length;
+                } else {
+                    pmohmData.currentStreak = 0;
+                }
+            }
+            
+            // Find highest streak
+            if (streaks.length > 0) {
+                pmohmData.highestStreak = Math.max(...streaks.map(streak => streak.length));
+            } else {
+                pmohmData.highestStreak = 0;
+            }
+            
+            // Calculate average streak
+            if (streaks.length > 0) {
+                const sum = streaks.reduce((total, streak) => total + streak.length, 0);
+                pmohmData.avgStreak = Math.round((sum / streaks.length) * 10) / 10;
+            } else {
+                pmohmData.avgStreak = 0;
+            }
+            
+            // Calculate average of last 5 streaks
+            if (streaks.length > 0) {
+                const last5 = streaks.slice(-5);
+                const sum = last5.reduce((total, streak) => total + streak.length, 0);
+                pmohmData.avgLast5 = Math.round((sum / last5.length) * 10) / 10;
+            } else {
+                pmohmData.avgLast5 = 0;
+            }
+        }
+    </script>
+</head>
+<body class="p-2 sm:p-4 md:p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex md:flex-row flex-col justify-between items-center">
+                <div class="text-center md:text-left logo-container">
+                    <img src="Log.png" alt="Striks AI Logo" class="logo">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">PMOHM Details</h1>
+                        <p class="tagline">MaxIan Mastery</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 md:mt-0">
+                    <button id="back-button" class="py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Stats Summary -->
+        <div class="card p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">PMOHM Stats</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 stat-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="current-streak">0</div>
+                    <div class="stat-label">Current Streak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="highest-streak">0</div>
+                    <div class="stat-label">Highest Streak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avg-streak">0</div>
+                    <div class="stat-label">Avg Streak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="last-5-avg">0</div>
+                    <div class="stat-label">Last 5 Avg</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-completions">0</div>
+                    <div class="stat-label">Total Days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="apex-percentage">0%</div>
+                    <div class="stat-label">Apex Ratio</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Calendar Section -->
+        <div class="card p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">PMOHM Calendar</h2>
+                <div class="flex space-x-2">
+                    <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div id="month-year-label" class="text-lg font-medium px-4 py-1">Month Year</div>
+                    <button id="next-month" class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button id="today-button" class="ml-2 py-1 px-3 bg-gray-100 hover:bg-gray-200 rounded">
+                        <i class="fas fa-calendar-day mr-1"></i> Today
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-1 calendar-container" id="calendar-container">
+                <!-- Calendar will be inserted here by JavaScript -->
+            </div>
+            
+            <div class="mt-4 text-center text-sm text-gray-500">
+                Click on a day to toggle PMOHM completion
+            </div>
+        </div>
+        
+        <!-- Streak Timeline Section -->
+        <div class="card p-6">
+            <h2 class="text-xl font-bold mb-4">Streak History</h2>
+            <div id="streak-timeline">
+                <!-- Streak timeline will be inserted here by JavaScript -->
+            </div>
+        </div>
+        
+        <footer class="mt-10 text-center text-gray-500 text-sm">
+            <p>Striks AI Consulting © 2025 - Human Led AI Innovation</p>
+            <div class="mt-2 flex justify-center items-center">
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html> 
