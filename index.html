@@ -217,6 +217,431 @@
             margin-right: 8px;
         }
     </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase configuratie -->
+    <script>
+      // Firebase configuratie
+      const firebaseConfig = {
+        apiKey: "AIzaSyCjAXyIEEyhvVAadd4v4it1bHoWhJXSmd8",
+        authDomain: "striks-habit-tracker.firebaseapp.com",
+        projectId: "striks-habit-tracker",
+        storageBucket: "striks-habit-tracker.firebasestorage.app",
+        messagingSenderId: "583114774251",
+        appId: "1:583114774251:web:7df7c25e0ed0b08036d0ae",
+        measurementId: "G-P02LE94672"
+      };
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+      
+      // Login state observer
+      let currentUser = null;
+      
+      // Controleer of gebruiker is ingelogd
+      auth.onAuthStateChanged(async function(user) {
+        if (!user) {
+          // Niet ingelogd, terug naar login pagina
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        // Gebruiker is ingelogd
+        currentUser = user;
+        
+        // Toon gebruikersnaam (e-mail of displayName indien beschikbaar)
+        const displayName = user.displayName || user.email.split('@')[0];
+        document.getElementById('username-display').textContent = displayName;
+        
+        // Laad gebruikersdata en render
+        await loadUserData();
+        updateDateRow();
+      });
+      
+      // Uitloggen
+      document.getElementById('logout-btn').addEventListener('click', function() {
+        auth.signOut().then(() => {
+          window.location.href = 'login.html';
+        }).catch((error) => {
+          console.error("Uitlogfout:", error);
+          alert("Er is een fout opgetreden bij het uitloggen. Probeer het opnieuw.");
+        });
+      });
+      
+      // Initializing habit data structure
+      const habitData = {
+        hardline: [
+          { id: 'h1', name: 'Morning Meditation', completed: {} },
+          { id: 'h2', name: 'Exercise 30 minutes', completed: {} },
+          { id: 'h3', name: 'Read 10 pages', completed: {} },
+          { id: 'h4', name: 'Drink 8 glasses of water', completed: {} },
+          { id: 'h5', name: 'No screen time after 10pm', completed: {} }
+        ],
+        mainline: [
+          { id: 'm1', name: 'Journal Writing', completed: {} },
+          { id: 'm2', name: 'Learn Something New', completed: {} },
+          { id: 'm3', name: 'Connect with Someone', completed: {} },
+          { id: 'm4', name: 'Healthy Eating', completed: {} },
+          { id: 'm5', name: 'Plan Next Day', completed: {} }
+        ],
+        softline: [
+          { id: 's1', name: 'Mindfulness Moment', completed: {} },
+          { id: 's2', name: 'Gratitude Practice', completed: {} },
+          { id: 's3', name: 'Stretch Break', completed: {} },
+          { id: 's4', name: 'Declutter Space', completed: {} },
+          { id: 's5', name: 'Creative Expression', completed: {} }
+        ]
+      };
+      
+      // Current date and week tracking
+      let currentDate = new Date();
+      let weekOffset = 0;
+      
+      // Format date as YYYY-MM-DD
+      function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      
+      // Get dates for the current week
+      function getWeekDates(offset = 0) {
+        const dates = [];
+        const now = new Date();
+        now.setDate(now.getDate() + (offset * 7));
+        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to get Monday
+        
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(now.setDate(diff + i));
+          dates.push(date);
+        }
+        
+        return dates;
+      }
+      
+      // Laad gebruikersdata van Firebase
+      async function loadUserData() {
+        try {
+          if (!currentUser) return;
+          
+          const userDoc = await db.collection('users').doc(currentUser.uid).get();
+          
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            
+            if (userData.habits) {
+              // Voeg de opgeslagen gegevens samen met de standaardstructuur
+              ['hardline', 'mainline', 'softline'].forEach(category => {
+                if (userData.habits[category]) {
+                  userData.habits[category].forEach((habit, index) => {
+                    if (index < 5) { // Beperk tot 5 gewoontes per categorie
+                      habitData[category][index] = habit;
+                    }
+                  });
+                }
+              });
+            }
+          } else {
+            // Als de gebruiker geen document heeft, voeg dan toe met standaardgegevens
+            await saveUserData();
+          }
+        } catch (error) {
+          console.error("Fout bij laden van gebruikersgegevens:", error);
+        }
+      }
+      
+      // Sla gebruikersdata op in Firebase
+      async function saveUserData() {
+        try {
+          if (!currentUser) return;
+          
+          await db.collection('users').doc(currentUser.uid).set({
+            habits: habitData,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          
+        } catch (error) {
+          console.error("Fout bij opslaan van gebruikersgegevens:", error);
+        }
+      }
+      
+      // Update the date row with dates for the current week
+      function updateDateRow() {
+        const dateRow = document.getElementById('date-row');
+        // Clear existing dates except for the first cell
+        while (dateRow.children.length > 1) {
+          dateRow.removeChild(dateRow.lastChild);
+        }
+        
+        const weekDates = getWeekDates(weekOffset);
+        
+        // Update week label
+        const firstDay = weekDates[0];
+        const lastDay = weekDates[6];
+        const firstMonth = firstDay.toLocaleString('default', { month: 'short' });
+        const lastMonth = lastDay.toLocaleString('default', { month: 'short' });
+        
+        let weekLabel;
+        if (firstMonth === lastMonth) {
+          weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
+        } else {
+          weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastMonth} ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
+        }
+        
+        document.getElementById('current-week-label').textContent = weekLabel;
+        
+        // Add dates to the row
+        weekDates.forEach(date => {
+          const dateCell = document.createElement('div');
+          dateCell.className = 'text-center font-bold';
+          
+          // Highlight today's date
+          const today = new Date();
+          if (date.toDateString() === today.toDateString() && weekOffset === 0) {
+            dateCell.className += ' text-blue-600';
+          }
+          
+          dateCell.textContent = date.getDate();
+          dateRow.appendChild(dateCell);
+        });
+        
+        // Redraw habits grid to match dates
+        updateHabitsGrid();
+      }
+      
+      // Generate the habit tracking grid
+      function generateHabitRow(habit, category) {
+        const habitRow = document.createElement('div');
+        habitRow.className = 'grid grid-cols-8 gap-2 mb-3';
+        
+        // Habit name cell
+        const nameCell = document.createElement('div');
+        nameCell.className = 'pr-2 flex items-center';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'habit-name-input';
+        nameInput.value = habit.name;
+        nameInput.placeholder = 'Enter habit name';
+        nameInput.dataset.id = habit.id;
+        nameInput.dataset.category = category;
+        nameInput.addEventListener('change', function() {
+          updateHabitName(this.dataset.category, this.dataset.id, this.value);
+        });
+        
+        nameCell.appendChild(nameInput);
+        habitRow.appendChild(nameCell);
+        
+        // Get current week dates
+        const weekDates = getWeekDates(weekOffset);
+        
+        // Create cells for each day of the week
+        weekDates.forEach(date => {
+          const dateString = formatDate(date);
+          const cell = document.createElement('div');
+          cell.className = `habit-cell ${category} h-10 flex items-center justify-center`;
+          cell.style.opacity = '0.3';
+          
+          if (habit.completed && habit.completed[dateString]) {
+            cell.classList.add('completed');
+            cell.style.opacity = '1';
+          }
+          
+          cell.dataset.date = dateString;
+          cell.dataset.habitId = habit.id;
+          cell.dataset.category = category;
+          
+          cell.addEventListener('click', function() {
+            toggleHabitCompletion(this.dataset.category, this.dataset.habitId, this.dataset.date);
+          });
+          
+          habitRow.appendChild(cell);
+        });
+        
+        return habitRow;
+      }
+      
+      // Update the display of habit tracking grids
+      function updateHabitsGrid() {
+        const categories = ['hardline', 'mainline', 'softline'];
+        
+        categories.forEach(category => {
+          const container = document.getElementById(`${category}-habits`);
+          container.innerHTML = ''; // Clear existing rows
+          
+          habitData[category].forEach(habit => {
+            const row = generateHabitRow(habit, category);
+            container.appendChild(row);
+          });
+        });
+        
+        updateStats();
+      }
+      
+      // Toggle habit completion status
+      function toggleHabitCompletion(category, habitId, date) {
+        const habit = habitData[category].find(h => h.id === habitId);
+        if (!habit.completed) {
+          habit.completed = {};
+        }
+        
+        if (habit.completed[date]) {
+          delete habit.completed[date];
+        } else {
+          habit.completed[date] = true;
+        }
+        
+        // Opslaan naar Firebase
+        saveUserData();
+        
+        // Update the UI
+        updateHabitsGrid();
+      }
+      
+      // Update habit name
+      function updateHabitName(category, habitId, newName) {
+        const habit = habitData[category].find(h => h.id === habitId);
+        habit.name = newName;
+        
+        // Opslaan naar Firebase
+        saveUserData();
+      }
+      
+      // Calculate and update statistics
+      function updateStats() {
+        const categories = ['hardline', 'mainline', 'softline'];
+        const weekDates = getWeekDates(weekOffset);
+        
+        let totalCompleted = 0;
+        let totalPossible = 0;
+        
+        categories.forEach(category => {
+          let categoryCompleted = 0;
+          let categoryPossible = habitData[category].length * 7; // 7 days
+          
+          habitData[category].forEach(habit => {
+            weekDates.forEach(date => {
+              const dateString = formatDate(date);
+              if (habit.completed && habit.completed[dateString]) {
+                categoryCompleted++;
+                totalCompleted++;
+              }
+            });
+          });
+          
+          totalPossible += categoryPossible;
+          
+          // Update category stats
+          const percentage = categoryPossible > 0 ? Math.round((categoryCompleted / categoryPossible) * 100) : 0;
+          document.getElementById(`${category}-percentage`).textContent = `${percentage}%`;
+          document.getElementById(`${category}-progress`).style.width = `${percentage}%`;
+          document.getElementById(`${category}-count`).textContent = `${categoryCompleted}/${categoryPossible}`;
+        });
+        
+        // Update total stats
+        const totalPercentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+        document.getElementById('total-percentage').textContent = `${totalPercentage}%`;
+        
+        // Update progress ring
+        const circle = document.querySelector('.progress-ring');
+        const radius = circle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        circle.style.strokeDasharray = circumference;
+        const offset = circumference - (totalPercentage / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
+        
+        // Calculate streak
+        calculateStreak();
+      }
+      
+      // Calculate streak power
+      function calculateStreak() {
+        let currentStreak = 0;
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Check if any habits were completed today or yesterday
+        const todayString = formatDate(today);
+        const yesterdayString = formatDate(yesterday);
+        
+        let todayCompleted = false;
+        let yesterdayCompleted = false;
+        
+        // Check if habits were completed today
+        ['hardline', 'mainline', 'softline'].forEach(category => {
+          habitData[category].forEach(habit => {
+            if (habit.completed && habit.completed[todayString]) {
+              todayCompleted = true;
+            }
+            if (habit.completed && habit.completed[yesterdayString]) {
+              yesterdayCompleted = true;
+            }
+          });
+        });
+        
+        // Start counting streak from today or yesterday
+        let checkDate;
+        if (todayCompleted) {
+          checkDate = new Date(today);
+          currentStreak = 1;
+        } else if (yesterdayCompleted) {
+          checkDate = new Date(yesterday);
+          currentStreak = 1;
+        } else {
+          // No recent completions
+          document.getElementById('total-streak').textContent = '0';
+          return;
+        }
+        
+        // Count backwards to find the streak
+        while (true) {
+          checkDate.setDate(checkDate.getDate() - 1);
+          const checkDateString = formatDate(checkDate);
+          
+          let dayCompleted = false;
+          ['hardline', 'mainline', 'softline'].forEach(category => {
+            habitData[category].forEach(habit => {
+              if (habit.completed && habit.completed[checkDateString]) {
+                dayCompleted = true;
+              }
+            });
+          });
+          
+          if (dayCompleted) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+        
+        document.getElementById('total-streak').textContent = currentStreak;
+      }
+      
+      // Navigation event handlers
+      document.getElementById('prev-week').addEventListener('click', function() {
+        weekOffset--;
+        updateDateRow();
+      });
+      
+      document.getElementById('next-week').addEventListener('click', function() {
+        weekOffset++;
+        updateDateRow();
+      });
+      
+      document.getElementById('current-week').addEventListener('click', function() {
+        weekOffset = 0;
+        updateDateRow();
+      });
+    </script>
 </head>
 <body class="p-6">
     <div class="max-w-6xl mx-auto">
@@ -373,376 +798,5 @@
             <p>Striks AI Consulting © 2023 - Human Led AI Innovation</p>
         </footer>
     </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is logged in
-            if (localStorage.getItem('isLoggedIn') !== 'true') {
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            // Set username display
-            const username = localStorage.getItem('username') || 'Gebruiker';
-            document.getElementById('username-display').textContent = username;
-            
-            // Logout button functionality
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('username');
-                window.location.href = 'login.html';
-            });
-            
-            // Initializing habit data structure
-            const habitData = {
-                hardline: [
-                    { id: 'h1', name: 'Morning Meditation', completed: {} },
-                    { id: 'h2', name: 'Exercise 30 minutes', completed: {} },
-                    { id: 'h3', name: 'Read 10 pages', completed: {} },
-                    { id: 'h4', name: 'Drink 8 glasses of water', completed: {} },
-                    { id: 'h5', name: 'No screen time after 10pm', completed: {} }
-                ],
-                mainline: [
-                    { id: 'm1', name: 'Journal Writing', completed: {} },
-                    { id: 'm2', name: 'Learn Something New', completed: {} },
-                    { id: 'm3', name: 'Connect with Someone', completed: {} },
-                    { id: 'm4', name: 'Healthy Eating', completed: {} },
-                    { id: 'm5', name: 'Plan Next Day', completed: {} }
-                ],
-                softline: [
-                    { id: 's1', name: 'Mindfulness Moment', completed: {} },
-                    { id: 's2', name: 'Gratitude Practice', completed: {} },
-                    { id: 's3', name: 'Stretch Break', completed: {} },
-                    { id: 's4', name: 'Declutter Space', completed: {} },
-                    { id: 's5', name: 'Creative Expression', completed: {} }
-                ]
-            };
-            
-            // Load data from localStorage if exists
-            const savedData = localStorage.getItem('striksHabitData');
-            if (savedData) {
-                try {
-                    const parsedData = JSON.parse(savedData);
-                    // Merge saved data with default structure
-                    ['hardline', 'mainline', 'softline'].forEach(category => {
-                        if (parsedData[category]) {
-                            parsedData[category].forEach((habit, index) => {
-                                if (index < 5) { // Ensure we only load 5 habits per category
-                                    habitData[category][index] = habit;
-                                }
-                            });
-                        }
-                    });
-                } catch (e) {
-                    console.error('Error loading saved habit data:', e);
-                }
-            }
-            
-            // Current date and week tracking
-            let currentDate = new Date();
-            let weekOffset = 0;
-            
-            // Format date as YYYY-MM-DD
-            function formatDate(date) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            }
-            
-            // Get dates for the current week
-            function getWeekDates(offset = 0) {
-                const dates = [];
-                const now = new Date();
-                now.setDate(now.getDate() + (offset * 7));
-                const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-                const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to get Monday
-                
-                for (let i = 0; i < 7; i++) {
-                    const date = new Date(now.setDate(diff + i));
-                    dates.push(date);
-                }
-                
-                return dates;
-            }
-            
-            // Update the date row with dates for the current week
-            function updateDateRow() {
-                const dateRow = document.getElementById('date-row');
-                // Clear existing dates except for the first cell
-                while (dateRow.children.length > 1) {
-                    dateRow.removeChild(dateRow.lastChild);
-                }
-                
-                const weekDates = getWeekDates(weekOffset);
-                
-                // Update week label
-                const firstDay = weekDates[0];
-                const lastDay = weekDates[6];
-                const firstMonth = firstDay.toLocaleString('default', { month: 'short' });
-                const lastMonth = lastDay.toLocaleString('default', { month: 'short' });
-                
-                let weekLabel;
-                if (firstMonth === lastMonth) {
-                    weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
-                } else {
-                    weekLabel = `${firstMonth} ${firstDay.getDate()} - ${lastMonth} ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
-                }
-                
-                document.getElementById('current-week-label').textContent = weekLabel;
-                
-                // Add dates to the row
-                weekDates.forEach(date => {
-                    const dateCell = document.createElement('div');
-                    dateCell.className = 'text-center font-bold';
-                    
-                    // Highlight today's date
-                    const today = new Date();
-                    if (date.toDateString() === today.toDateString() && weekOffset === 0) {
-                        dateCell.className += ' text-blue-600';
-                    }
-                    
-                    dateCell.textContent = date.getDate();
-                    dateRow.appendChild(dateCell);
-                });
-                
-                // Redraw habits grid to match dates
-                updateHabitsGrid();
-            }
-            
-            // Generate the habit tracking grid
-            function generateHabitRow(habit, category) {
-                const habitRow = document.createElement('div');
-                habitRow.className = 'grid grid-cols-8 gap-2 mb-3';
-                
-                // Habit name cell
-                const nameCell = document.createElement('div');
-                nameCell.className = 'pr-2 flex items-center';
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.className = 'habit-name-input';
-                nameInput.value = habit.name;
-                nameInput.placeholder = 'Enter habit name';
-                nameInput.dataset.id = habit.id;
-                nameInput.dataset.category = category;
-                nameInput.addEventListener('change', function() {
-                    updateHabitName(this.dataset.category, this.dataset.id, this.value);
-                });
-                
-                nameCell.appendChild(nameInput);
-                habitRow.appendChild(nameCell);
-                
-                // Get current week dates
-                const weekDates = getWeekDates(weekOffset);
-                
-                // Create cells for each day of the week
-                weekDates.forEach(date => {
-                    const dateString = formatDate(date);
-                    const cell = document.createElement('div');
-                    cell.className = `habit-cell ${category} h-10 flex items-center justify-center`;
-                    cell.style.opacity = '0.3';
-                    
-                    if (habit.completed && habit.completed[dateString]) {
-                        cell.classList.add('completed');
-                        cell.style.opacity = '1';
-                    }
-                    
-                    cell.dataset.date = dateString;
-                    cell.dataset.habitId = habit.id;
-                    cell.dataset.category = category;
-                    
-                    cell.addEventListener('click', function() {
-                        toggleHabitCompletion(this.dataset.category, this.dataset.habitId, this.dataset.date);
-                    });
-                    
-                    habitRow.appendChild(cell);
-                });
-                
-                return habitRow;
-            }
-            
-            // Update the display of habit tracking grids
-            function updateHabitsGrid() {
-                const categories = ['hardline', 'mainline', 'softline'];
-                
-                categories.forEach(category => {
-                    const container = document.getElementById(`${category}-habits`);
-                    container.innerHTML = ''; // Clear existing rows
-                    
-                    habitData[category].forEach(habit => {
-                        const row = generateHabitRow(habit, category);
-                        container.appendChild(row);
-                    });
-                });
-                
-                updateStats();
-            }
-            
-            // Toggle habit completion status
-            function toggleHabitCompletion(category, habitId, date) {
-                const habit = habitData[category].find(h => h.id === habitId);
-                if (!habit.completed) {
-                    habit.completed = {};
-                }
-                
-                if (habit.completed[date]) {
-                    delete habit.completed[date];
-                } else {
-                    habit.completed[date] = true;
-                }
-                
-                // Save to localStorage
-                saveHabitData();
-                
-                // Update the UI
-                updateHabitsGrid();
-            }
-            
-            // Update habit name
-            function updateHabitName(category, habitId, newName) {
-                const habit = habitData[category].find(h => h.id === habitId);
-                habit.name = newName;
-                
-                // Save to localStorage
-                saveHabitData();
-            }
-            
-            // Save habit data to localStorage
-            function saveHabitData() {
-                localStorage.setItem('striksHabitData', JSON.stringify(habitData));
-            }
-            
-            // Calculate and update statistics
-            function updateStats() {
-                const categories = ['hardline', 'mainline', 'softline'];
-                const weekDates = getWeekDates(weekOffset);
-                
-                let totalCompleted = 0;
-                let totalPossible = 0;
-                
-                categories.forEach(category => {
-                    let categoryCompleted = 0;
-                    let categoryPossible = habitData[category].length * 7; // 7 days
-                    
-                    habitData[category].forEach(habit => {
-                        weekDates.forEach(date => {
-                            const dateString = formatDate(date);
-                            if (habit.completed && habit.completed[dateString]) {
-                                categoryCompleted++;
-                                totalCompleted++;
-                            }
-                        });
-                    });
-                    
-                    totalPossible += categoryPossible;
-                    
-                    // Update category stats
-                    const percentage = categoryPossible > 0 ? Math.round((categoryCompleted / categoryPossible) * 100) : 0;
-                    document.getElementById(`${category}-percentage`).textContent = `${percentage}%`;
-                    document.getElementById(`${category}-progress`).style.width = `${percentage}%`;
-                    document.getElementById(`${category}-count`).textContent = `${categoryCompleted}/${categoryPossible}`;
-                });
-                
-                // Update total stats
-                const totalPercentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-                document.getElementById('total-percentage').textContent = `${totalPercentage}%`;
-                
-                // Update progress ring
-                const circle = document.querySelector('.progress-ring');
-                const radius = circle.r.baseVal.value;
-                const circumference = 2 * Math.PI * radius;
-                circle.style.strokeDasharray = circumference;
-                const offset = circumference - (totalPercentage / 100) * circumference;
-                circle.style.strokeDashoffset = offset;
-                
-                // Calculate streak
-                calculateStreak();
-            }
-            
-            // Calculate streak power
-            function calculateStreak() {
-                let currentStreak = 0;
-                const today = new Date();
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                
-                // Check if any habits were completed today or yesterday
-                const todayString = formatDate(today);
-                const yesterdayString = formatDate(yesterday);
-                
-                let todayCompleted = false;
-                let yesterdayCompleted = false;
-                
-                // Check if habits were completed today
-                ['hardline', 'mainline', 'softline'].forEach(category => {
-                    habitData[category].forEach(habit => {
-                        if (habit.completed && habit.completed[todayString]) {
-                            todayCompleted = true;
-                        }
-                        if (habit.completed && habit.completed[yesterdayString]) {
-                            yesterdayCompleted = true;
-                        }
-                    });
-                });
-                
-                // Start counting streak from today or yesterday
-                let checkDate;
-                if (todayCompleted) {
-                    checkDate = new Date(today);
-                    currentStreak = 1;
-                } else if (yesterdayCompleted) {
-                    checkDate = new Date(yesterday);
-                    currentStreak = 1;
-                } else {
-                    // No recent completions
-                    document.getElementById('total-streak').textContent = '0';
-                    return;
-                }
-                
-                // Count backwards to find the streak
-                while (true) {
-                    checkDate.setDate(checkDate.getDate() - 1);
-                    const checkDateString = formatDate(checkDate);
-                    
-                    let dayCompleted = false;
-                    ['hardline', 'mainline', 'softline'].forEach(category => {
-                        habitData[category].forEach(habit => {
-                            if (habit.completed && habit.completed[checkDateString]) {
-                                dayCompleted = true;
-                            }
-                        });
-                    });
-                    
-                    if (dayCompleted) {
-                        currentStreak++;
-                    } else {
-                        break;
-                    }
-                }
-                
-                document.getElementById('total-streak').textContent = currentStreak;
-            }
-            
-            // Navigation event handlers
-            document.getElementById('prev-week').addEventListener('click', function() {
-                weekOffset--;
-                updateDateRow();
-            });
-            
-            document.getElementById('next-week').addEventListener('click', function() {
-                weekOffset++;
-                updateDateRow();
-            });
-            
-            document.getElementById('current-week').addEventListener('click', function() {
-                weekOffset = 0;
-                updateDateRow();
-            });
-            
-            // Initialize
-            updateDateRow();
-        });
-    </script>
 </body>
 </html> 

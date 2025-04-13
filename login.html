@@ -7,6 +7,17 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase configuratie -->
+    <script>
+        // Verwijderd - we gebruiken nu modulaire Firebase implementatie
+    </script>
+    
     <style>
         :root {
             --primary-color: #0055A4;
@@ -50,6 +61,7 @@
             border-radius: 8px;
             width: 100%;
             transition: border-color 0.3s ease;
+            margin-bottom: 12px;
         }
         
         .form-input:focus {
@@ -95,6 +107,75 @@
         .shake {
             animation: shake 0.6s;
         }
+        
+        .loading-spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .register-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #E2E8F0;
+        }
+        
+        .register-section h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .register-btn {
+            background-color: #E2E8F0;
+            color: #4A5568;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            width: 100%;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+        }
+        
+        .register-btn:hover {
+            background-color: #CBD5E0;
+            transform: translateY(-1px);
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: 600;
+        }
+        
+        #register-form {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -104,57 +185,216 @@
             <p class="mt-1">Human Led AI Innovation</p>
         </div>
         <div class="p-8">
-            <h2 class="text-xl font-bold mb-6 text-center">Login</h2>
+            <div class="tab-container">
+                <div id="login-tab" class="tab active">Inloggen</div>
+                <div id="register-tab" class="tab">Registreren</div>
+            </div>
+            
             <form id="login-form">
                 <div class="mb-4">
-                    <label for="username" class="block text-sm font-medium mb-2">Gebruikersnaam</label>
-                    <input type="text" id="username" class="form-input" placeholder="Voer je gebruikersnaam in" autocomplete="username">
+                    <label for="email" class="block text-sm font-medium mb-2">E-mail</label>
+                    <input type="email" id="email" class="form-input" placeholder="Voer je e-mailadres in" autocomplete="email">
                 </div>
                 <div class="mb-6">
                     <label for="password" class="block text-sm font-medium mb-2">Wachtwoord</label>
                     <input type="password" id="password" class="form-input" placeholder="Voer je wachtwoord in" autocomplete="current-password">
-                    <div id="error-message" class="error-message">Ongeldige gebruikersnaam of wachtwoord</div>
+                    <div id="error-message" class="error-message">Ongeldige e-mail of wachtwoord</div>
                 </div>
-                <button type="submit" class="login-btn">Inloggen</button>
+                <button type="submit" class="login-btn relative">
+                    <span id="login-text">Inloggen</span>
+                    <div id="login-spinner" class="loading-spinner absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                </button>
+            </form>
+            
+            <form id="register-form">
+                <div class="mb-4">
+                    <label for="new-email" class="block text-sm font-medium mb-2">E-mail</label>
+                    <input type="email" id="new-email" class="form-input" placeholder="Voer een e-mailadres in" autocomplete="email">
+                </div>
+                <div class="mb-6">
+                    <label for="new-password" class="block text-sm font-medium mb-2">Wachtwoord</label>
+                    <input type="password" id="new-password" class="form-input" placeholder="Minimaal 6 tekens" autocomplete="new-password">
+                    <div id="register-error-message" class="error-message">Foutmelding registratie</div>
+                </div>
+                <button type="submit" id="register-btn" class="login-btn relative">
+                    <span id="register-text">Registreren</span>
+                    <div id="register-spinner" class="loading-spinner absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                </button>
             </form>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is already logged in
-            if (localStorage.getItem('isLoggedIn') === 'true') {
-                window.location.href = 'index.html';
+    <script type="module">
+        // Import the functions you need from the SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjAXyIEEyhvVAadd4v4it1bHoWhJXSmd8",
+            authDomain: "striks-habit-tracker.firebaseapp.com",
+            projectId: "striks-habit-tracker",
+            storageBucket: "striks-habit-tracker.firebasestorage.app",
+            messagingSenderId: "583114774251",
+            appId: "1:583114774251:web:7df7c25e0ed0b08036d0ae",
+            measurementId: "G-P02LE94672"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // DOM Elements
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const errorMessage = document.getElementById('error-message');
+        const registerErrorMessage = document.getElementById('register-error-message');
+        const loginSpinner = document.getElementById('login-spinner');
+        const loginText = document.getElementById('login-text');
+        const registerSpinner = document.getElementById('register-spinner');
+        const registerText = document.getElementById('register-text');
+
+        // Switch tabs
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+            errorMessage.style.display = 'none';
+            registerErrorMessage.style.display = 'none';
+        });
+
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            registerForm.style.display = 'block';
+            loginForm.style.display = 'none';
+            errorMessage.style.display = 'none';
+            registerErrorMessage.style.display = 'none';
+        });
+
+        // Login form submission
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!validateEmail(email) || !password) {
+                errorMessage.textContent = 'Vul een geldig e-mailadres en wachtwoord in';
+                errorMessage.style.display = 'block';
+                loginForm.classList.add('shake');
+                setTimeout(() => loginForm.classList.remove('shake'), 600);
+                return;
             }
             
-            const loginForm = document.getElementById('login-form');
-            const errorMessage = document.getElementById('error-message');
-            const loginCard = document.querySelector('.login-card');
+            // Show loading state
+            loginText.style.display = 'none';
+            loginSpinner.style.display = 'block';
+            errorMessage.style.display = 'none';
             
-            loginForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // Successful login
+                console.log('Login successful:', userCredential.user);
                 
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
+                // Redirect to the main app
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Login error:', error);
                 
-                // Validate login credentials
-                if (username === 'Ian' && password === 'Str1kvr@@G') {
-                    // Login successful
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    window.location.href = 'index.html';
-                } else {
-                    // Login failed
-                    errorMessage.style.display = 'block';
-                    loginCard.classList.add('shake');
-                    
-                    // Remove shake animation after it completes
-                    setTimeout(function() {
-                        loginCard.classList.remove('shake');
-                    }, 600);
-                }
-            });
+                // Display user-friendly error message
+                errorMessage.textContent = getFriendlyAuthErrorMessage(error.code);
+                errorMessage.style.display = 'block';
+                
+                // Add shake animation
+                loginForm.classList.add('shake');
+                setTimeout(() => loginForm.classList.remove('shake'), 600);
+            } finally {
+                // Hide loading state
+                loginText.style.display = 'block';
+                loginSpinner.style.display = 'none';
+            }
         });
+
+        // Register form submission
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('new-email').value;
+            const password = document.getElementById('new-password').value;
+            
+            if (!validateEmail(email)) {
+                registerErrorMessage.textContent = 'Vul een geldig e-mailadres in';
+                registerErrorMessage.style.display = 'block';
+                return;
+            }
+            
+            if (!password || password.length < 6) {
+                registerErrorMessage.textContent = 'Wachtwoord moet minimaal 6 tekens bevatten';
+                registerErrorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Show loading state
+            registerText.style.display = 'none';
+            registerSpinner.style.display = 'block';
+            registerErrorMessage.style.display = 'none';
+            
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Successful registration
+                console.log('Registration successful:', userCredential.user);
+                
+                // Redirect to the main app
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Registration error:', error);
+                
+                // Display user-friendly error message
+                registerErrorMessage.textContent = getFriendlyAuthErrorMessage(error.code);
+                registerErrorMessage.style.display = 'block';
+                
+                // Add shake animation
+                registerForm.classList.add('shake');
+                setTimeout(() => registerForm.classList.remove('shake'), 600);
+            } finally {
+                // Hide loading state
+                registerText.style.display = 'block';
+                registerSpinner.style.display = 'none';
+            }
+        });
+
+        // Email validation function
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Function to get user-friendly error messages
+        function getFriendlyAuthErrorMessage(errorCode) {
+            switch (errorCode) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                    return 'Ongeldige e-mail of wachtwoord';
+                case 'auth/email-already-in-use':
+                    return 'Dit e-mailadres is al in gebruik';
+                case 'auth/weak-password':
+                    return 'Wachtwoord is te zwak';
+                case 'auth/invalid-email':
+                    return 'Ongeldig e-mailadres';
+                case 'auth/too-many-requests':
+                    return 'Te veel aanmeldpogingen. Probeer het later opnieuw';
+                case 'auth/network-request-failed':
+                    return 'Netwerkfout. Controleer je internetverbinding';
+                default:
+                    return 'Er is een fout opgetreden. Probeer het later opnieuw';
+            }
+        }
     </script>
 </body>
 </html> 
