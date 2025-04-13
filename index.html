@@ -327,6 +327,26 @@
                 align-items: center;
             }
             
+            .pmohm-stats {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .pmohm-stats > div {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 12px !important;
+            }
+            
+            .pmohm-stats h3 {
+                margin-bottom: 0 !important;
+            }
+            
+            .pmohm-history-wrapper .habit-cell {
+                height: 28px !important;
+                width: 28px !important;
+            }
+            
             .habit-cell.completed::after {
                 font-size: 18px;
             }
@@ -513,6 +533,16 @@
         softline: []
       };
       
+      // PMOHM speciale habit data
+      let pmohmData = {
+        streaks: [],  // Array van voorgaande streaks
+        currentStreak: 0,
+        highestStreak: 0,
+        completed: {}, // Key: YYYY-MM-DD, Value: true/false
+        lastCompleted: null,
+        total: 0
+      };
+      
       // Standaard habits - deze worden alleen gebruikt als de gebruiker nog geen data heeft
       const defaultHabits = {
         hardline: [
@@ -590,6 +620,21 @@
               });
               await saveUserData(); // Sla standaard habits op
             }
+            
+            // Laad PMOHM data als die bestaat
+            if (userData.pmohm) {
+              pmohmData = userData.pmohm;
+              
+              // Zorg ervoor dat alle benodigde velden aanwezig zijn
+              if (!pmohmData.streaks) pmohmData.streaks = [];
+              if (!pmohmData.completed) pmohmData.completed = {};
+              if (pmohmData.currentStreak === undefined) pmohmData.currentStreak = 0;
+              if (pmohmData.highestStreak === undefined) pmohmData.highestStreak = 0;
+              if (pmohmData.total === undefined) pmohmData.total = 0;
+              
+              // Bereken huidige streak
+              calculatePMOHMStreak();
+            }
           } else {
             // Als de gebruiker geen document heeft, maak een nieuw aan met standaard habits
             ['hardline', 'mainline', 'softline'].forEach(category => {
@@ -609,6 +654,7 @@
           
           await db.collection('users').doc(currentUser.uid).set({
             habits: habitData,
+            pmohm: pmohmData,
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
           
@@ -743,6 +789,9 @@
             container.appendChild(row);
           });
         });
+        
+        // Update PMOHM habit tracking
+        updatePMOHMGrid();
         
         updateStats();
       }
@@ -940,6 +989,216 @@
         // Update UI
         updateHabitsGrid();
       }
+      
+      // Generate PMOHM tracking grid for current week
+      function updatePMOHMGrid() {
+        const container = document.getElementById('pmohm-habit');
+        container.innerHTML = ''; // Clear existing content
+        
+        // Create PMOHM row for current week
+        const pmohmRow = document.createElement('div');
+        pmohmRow.className = 'grid grid-cols-8 gap-1 sm:gap-2 mb-3 habit-row';
+        
+        // PMOHM label cell
+        const labelCell = document.createElement('div');
+        labelCell.className = 'pr-2 flex items-center justify-between habit-name-cell';
+        labelCell.style.minHeight = '50px';
+        
+        const nameWrapper = document.createElement('div');
+        nameWrapper.className = 'flex-grow';
+        
+        const nameText = document.createElement('div');
+        nameText.className = 'text-lg font-bold';
+        nameText.textContent = 'PMOHM';
+        
+        nameWrapper.appendChild(nameText);
+        labelCell.appendChild(nameWrapper);
+        pmohmRow.appendChild(labelCell);
+        
+        // Get current week dates
+        const weekDates = getWeekDates(weekOffset);
+        
+        // Create cells for each day of the week
+        weekDates.forEach(date => {
+          const dateString = formatDate(date);
+          const cell = document.createElement('div');
+          cell.className = 'habit-cell h-12 w-12 flex items-center justify-center';
+          cell.style.backgroundColor = 'var(--primary-color)';
+          cell.style.opacity = '0.3';
+          
+          if (pmohmData.completed && pmohmData.completed[dateString]) {
+            cell.classList.add('completed');
+            cell.style.opacity = '1';
+          }
+          
+          cell.dataset.date = dateString;
+          
+          cell.addEventListener('click', function() {
+            togglePMOHMCompletion(this.dataset.date);
+          });
+          
+          pmohmRow.appendChild(cell);
+        });
+        
+        container.appendChild(pmohmRow);
+        
+        // Update PMOHM history
+        updatePMOHMHistory();
+        
+        // Update PMOHM stats
+        updatePMOHMStats();
+      }
+      
+      // Toggle PMOHM completion
+      function togglePMOHMCompletion(date) {
+        if (!pmohmData.completed) {
+          pmohmData.completed = {};
+        }
+        
+        // Toggle completion
+        if (pmohmData.completed[date]) {
+          delete pmohmData.completed[date];
+          if (pmohmData.total > 0) pmohmData.total--;
+        } else {
+          pmohmData.completed[date] = true;
+          pmohmData.total++;
+        }
+        
+        // Update PMOHM streak information
+        calculatePMOHMStreak();
+        
+        // Save data
+        saveUserData();
+        
+        // Update UI
+        updatePMOHMGrid();
+      }
+      
+      // Calculate PMOHM streak
+      function calculatePMOHMStreak() {
+        // Reset current streak
+        pmohmData.currentStreak = 0;
+        
+        // Find most recent completion
+        const today = new Date();
+        const completedDates = Object.keys(pmohmData.completed || {}).filter(date => pmohmData.completed[date]);
+        
+        if (completedDates.length === 0) return;
+        
+        // Sort dates in descending order
+        completedDates.sort((a, b) => new Date(b) - new Date(a));
+        
+        // Most recent completion
+        const lastDate = new Date(completedDates[0]);
+        pmohmData.lastCompleted = formatDate(lastDate);
+        
+        // Check if completed today or yesterday
+        const todayString = formatDate(today);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayString = formatDate(yesterday);
+        
+        // If not completed today or yesterday, streak is over
+        if (completedDates[0] !== todayString && completedDates[0] !== yesterdayString) {
+          // Save the last streak to history if it was significant
+          if (pmohmData.currentStreak > 1) {
+            pmohmData.streaks.push(pmohmData.currentStreak);
+            // Keep only last 10 streaks
+            if (pmohmData.streaks.length > 10) {
+              pmohmData.streaks.shift();
+            }
+          }
+          pmohmData.currentStreak = 0;
+          return;
+        }
+        
+        // Count backwards to find current streak
+        let checkDate = new Date(completedDates[0]);
+        pmohmData.currentStreak = 1;
+        
+        while (true) {
+          checkDate.setDate(checkDate.getDate() - 1);
+          const checkDateString = formatDate(checkDate);
+          
+          if (pmohmData.completed && pmohmData.completed[checkDateString]) {
+            pmohmData.currentStreak++;
+          } else {
+            break;
+          }
+        }
+        
+        // Update highest streak if needed
+        if (pmohmData.currentStreak > pmohmData.highestStreak) {
+          pmohmData.highestStreak = pmohmData.currentStreak;
+        }
+      }
+      
+      // Update PMOHM stats display
+      function updatePMOHMStats() {
+        document.getElementById('pmohm-streak').textContent = pmohmData.currentStreak;
+        document.getElementById('pmohm-highest-streak').textContent = pmohmData.highestStreak;
+        document.getElementById('pmohm-total').textContent = pmohmData.total;
+        
+        // Calculate average of last 5 streaks
+        let avg = 0;
+        const streaks = [...pmohmData.streaks];
+        if (pmohmData.currentStreak > 0) {
+          streaks.push(pmohmData.currentStreak);
+        }
+        
+        if (streaks.length > 0) {
+          const last5 = streaks.slice(-5);
+          const sum = last5.reduce((a, b) => a + b, 0);
+          avg = Math.round((sum / last5.length) * 10) / 10; // Round to 1 decimal
+        }
+        
+        document.getElementById('pmohm-avg-streak').textContent = avg;
+      }
+      
+      // Update PMOHM history display
+      function updatePMOHMHistory() {
+        const historyContainer = document.getElementById('pmohm-history');
+        historyContainer.innerHTML = '';
+        
+        // Show history for past 4 weeks
+        for (let i = 1; i <= 4; i++) {
+          const weekRow = document.createElement('div');
+          weekRow.className = 'grid grid-cols-8 gap-1 sm:gap-2 mb-3';
+          
+          // Week label
+          const weekLabel = document.createElement('div');
+          weekLabel.className = 'pr-2 flex items-center';
+          weekLabel.textContent = `Week -${i}`;
+          weekRow.appendChild(weekLabel);
+          
+          // Get dates for this past week
+          const pastDates = getWeekDates(-i);
+          
+          // Create cells for each day
+          pastDates.forEach(date => {
+            const dateString = formatDate(date);
+            const cell = document.createElement('div');
+            cell.className = 'habit-cell h-8 w-8 flex items-center justify-center';
+            cell.style.backgroundColor = 'var(--primary-color)';
+            cell.style.opacity = '0.3';
+            
+            if (pmohmData.completed && pmohmData.completed[dateString]) {
+              cell.classList.add('completed');
+              cell.style.opacity = '1';
+            }
+            
+            cell.dataset.date = dateString;
+            
+            cell.addEventListener('click', function() {
+              togglePMOHMCompletion(this.dataset.date);
+            });
+            
+            weekRow.appendChild(cell);
+          });
+          
+          historyContainer.appendChild(weekRow);
+        }
+      }
     </script>
 </head>
 <body class="p-2 sm:p-4 md:p-6">
@@ -1019,6 +1278,45 @@
         
         <!-- Habit Tracking Sections -->
         <div class="grid grid-cols-1 gap-8">
+            <!-- PMOHM Special Habit Section -->
+            <div class="card p-6 border-2" style="border-color: var(--primary-color);">
+                <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color));">
+                    <h2 class="text-xl font-bold">PMOHM Habit Tracker</h2>
+                    <div class="flex items-center">
+                        <span class="mr-2">Current Streak:</span>
+                        <span class="streak-badge" id="pmohm-streak">0</span>
+                    </div>
+                </div>
+                
+                <div class="pmohm-stats grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <h3 class="text-md font-semibold mb-1" style="color: var(--primary-color);">Hoogste Streak</h3>
+                        <div class="text-2xl font-bold" id="pmohm-highest-streak">0</div>
+                    </div>
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <h3 class="text-md font-semibold mb-1" style="color: var(--primary-color);">Gem. Laatste 5</h3>
+                        <div class="text-2xl font-bold" id="pmohm-avg-streak">0</div>
+                    </div>
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <h3 class="text-md font-semibold mb-1" style="color: var(--primary-color);">Totaal Voltooid</h3>
+                        <div class="text-2xl font-bold" id="pmohm-total">0</div>
+                    </div>
+                </div>
+                
+                <div class="pmohm-habit" id="pmohm-habit">
+                    <!-- PMOHM tracking will be inserted here -->
+                </div>
+                
+                <div class="pmohm-history mt-4">
+                    <h3 class="text-lg font-bold mb-2">Geschiedenis (laatste 4 weken)</h3>
+                    <div class="overflow-x-auto">
+                        <div class="pmohm-history-wrapper" id="pmohm-history">
+                            <!-- PMOHM history will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Hardline Habits Section -->
             <div class="card p-6">
                 <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center" style="background-color: var(--hardline-color);">
