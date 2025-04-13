@@ -267,14 +267,7 @@
             .habit-name-input {
                 max-width: 100%;
                 font-size: 14px;
-            }
-            
-            .card {
-                padding: 10px !important;
-            }
-            
-            .streak-container {
-                padding: 10px !important;
+                padding: 8px 4px;
             }
             
             header {
@@ -307,6 +300,69 @@
             .logo {
                 height: 40px;
                 margin-bottom: 10px;
+            }
+        }
+        
+        /* Extra kleine schermen (mobiele telefoons) */
+        @media (max-width: 480px) {
+            .grid-cols-8 {
+                grid-template-columns: 3fr repeat(7, minmax(28px, 1fr)) !important;
+            }
+            
+            .habit-cell {
+                height: 32px !important;
+                width: 32px !important;
+            }
+            
+            .habit-name-input {
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 120px;
+                padding: 6px 2px;
+            }
+            
+            /* Extra spacing voor habit rows */
+            .habit-row {
+                margin-bottom: 12px !important;
+                border-bottom: 1px solid rgba(0,0,0,0.05);
+                padding-bottom: 12px;
+            }
+            
+            /* Make dates smaller */
+            .date-cell {
+                font-size: 11px !important;
+            }
+            
+            .date-header {
+                font-size: 11px !important;
+            }
+            
+            /* Verbeterde mobiele navigatie */
+            .category-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .category-header h2 {
+                margin-bottom: 6px;
+            }
+            
+            /* Kleinere delete-knop voor habits op mobiel */
+            .habit-name-cell .fa-trash-alt {
+                font-size: 12px;
+            }
+        }
+        
+        /* Landscape-modus op mobiel telefoons */
+        @media (max-width: 896px) and (orientation: landscape) {
+            .grid-cols-8 {
+                grid-template-columns: 2fr repeat(7, 1fr) !important;
+            }
+            
+            .habit-name-input {
+                max-width: 100px;
             }
         }
     </style>
@@ -538,7 +594,7 @@
         // Add dates to the row
         weekDates.forEach(date => {
           const dateCell = document.createElement('div');
-          dateCell.className = 'text-center font-bold';
+          dateCell.className = 'text-center font-bold date-cell';
           
           // Highlight today's date
           const today = new Date();
@@ -557,11 +613,11 @@
       // Generate the habit tracking grid
       function generateHabitRow(habit, category) {
         const habitRow = document.createElement('div');
-        habitRow.className = 'grid grid-cols-8 gap-1 sm:gap-2 mb-3';
+        habitRow.className = 'grid grid-cols-8 gap-1 sm:gap-2 mb-3 habit-row';
         
         // Habit name cell
         const nameCell = document.createElement('div');
-        nameCell.className = 'pr-2 flex items-center justify-between';
+        nameCell.className = 'pr-2 flex items-center justify-between habit-name-cell';
         
         const nameWrapper = document.createElement('div');
         nameWrapper.className = 'flex-grow';
@@ -894,17 +950,17 @@
             </div>
             
             <div class="grid grid-cols-8 gap-1 sm:gap-2">
-                <div class="col-span-1"></div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Mon</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Tue</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Wed</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Thu</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Fri</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Sat</div>
-                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm">Sun</div>
+                <div class="col-span-1 pr-2 font-medium text-gray-600 text-xs sm:text-sm">Gewoonte</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Mon</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Tue</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Wed</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Thu</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Fri</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Sat</div>
+                <div class="text-center font-medium text-gray-600 text-xs sm:text-sm date-header">Sun</div>
             </div>
             <div class="grid grid-cols-8 gap-1 sm:gap-2 mb-2" id="date-row">
-                <div class="text-right pr-2 font-medium text-gray-600 text-xs sm:text-sm">Dates</div>
+                <div class="text-right pr-2 font-medium text-gray-600 text-xs sm:text-sm">Datum</div>
                 <!-- Dates will be inserted here by JavaScript -->
             </div>
         </div>
