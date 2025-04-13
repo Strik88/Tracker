@@ -424,7 +424,10 @@
         
         // Habit name cell
         const nameCell = document.createElement('div');
-        nameCell.className = 'pr-2 flex items-center';
+        nameCell.className = 'pr-2 flex items-center justify-between';
+        
+        const nameWrapper = document.createElement('div');
+        nameWrapper.className = 'flex-grow';
         
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
@@ -437,7 +440,20 @@
           updateHabitName(this.dataset.category, this.dataset.id, this.value);
         });
         
-        nameCell.appendChild(nameInput);
+        nameWrapper.appendChild(nameInput);
+        nameCell.appendChild(nameWrapper);
+        
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'ml-2 text-gray-400 hover:text-red-500 focus:outline-none';
+        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        deleteBtn.dataset.id = habit.id;
+        deleteBtn.dataset.category = category;
+        deleteBtn.addEventListener('click', function() {
+          removeHabit(this.dataset.category, this.dataset.id);
+        });
+        
+        nameCell.appendChild(deleteBtn);
         habitRow.appendChild(nameCell);
         
         // Get current week dates
@@ -513,6 +529,24 @@
         
         // Opslaan naar Firebase
         saveUserData();
+      }
+      
+      // Function to remove a habit
+      function removeHabit(category, habitId) {
+        if (confirm('Weet je zeker dat je deze habit wilt verwijderen?')) {
+          // Find the index of the habit to remove
+          const index = habitData[category].findIndex(h => h.id === habitId);
+          if (index !== -1) {
+            // Remove the habit
+            habitData[category].splice(index, 1);
+            
+            // Save to Firebase
+            saveUserData();
+            
+            // Update UI
+            updateHabitsGrid();
+          }
+        }
       }
       
       // Calculate and update statistics
@@ -641,6 +675,55 @@
         weekOffset = 0;
         updateDateRow();
       });
+      
+      // Add new habit functionality
+      document.getElementById('add-hardline').addEventListener('click', function() {
+        addNewHabit('hardline');
+      });
+      
+      document.getElementById('add-mainline').addEventListener('click', function() {
+        addNewHabit('mainline');
+      });
+      
+      document.getElementById('add-softline').addEventListener('click', function() {
+        addNewHabit('softline');
+      });
+      
+      // Function to add a new habit
+      function addNewHabit(category) {
+        // Generate a unique ID based on timestamp
+        const newId = `${category[0]}${Date.now()}`;
+        
+        // Default habit name
+        let defaultName = '';
+        switch(category) {
+          case 'hardline':
+            defaultName = 'Nieuwe Hardline Habit';
+            break;
+          case 'mainline':
+            defaultName = 'Nieuwe Mainline Habit';
+            break;
+          case 'softline':
+            defaultName = 'Nieuwe Softline Habit';
+            break;
+        }
+        
+        // Create new habit object
+        const newHabit = {
+          id: newId,
+          name: defaultName,
+          completed: {}
+        };
+        
+        // Add to habit data
+        habitData[category].push(newHabit);
+        
+        // Save to Firebase
+        saveUserData();
+        
+        // Update UI
+        updateHabitsGrid();
+      }
     </script>
 </head>
 <body class="p-6">
@@ -729,6 +812,9 @@
                 <div class="hardline-habits" id="hardline-habits">
                     <!-- Hardline habits will be inserted here by JavaScript -->
                 </div>
+                <button id="add-hardline" class="mt-3 p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Nieuwe hardline habit toevoegen
+                </button>
             </div>
             
             <!-- Mainline Habits Section -->
@@ -743,6 +829,9 @@
                 <div class="mainline-habits" id="mainline-habits">
                     <!-- Mainline habits will be inserted here by JavaScript -->
                 </div>
+                <button id="add-mainline" class="mt-3 p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Nieuwe mainline habit toevoegen
+                </button>
             </div>
             
             <!-- Softline Habits Section -->
@@ -757,6 +846,9 @@
                 <div class="softline-habits" id="softline-habits">
                     <!-- Softline habits will be inserted here by JavaScript -->
                 </div>
+                <button id="add-softline" class="mt-3 p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Nieuwe softline habit toevoegen
+                </button>
             </div>
         </div>
         
