@@ -305,29 +305,51 @@
         
         /* Extra kleine schermen (mobiele telefoons) */
         @media (max-width: 480px) {
+            body {
+                font-size: 16px;
+            }
+            
+            .card {
+                padding: 12px !important;
+                margin-bottom: 16px;
+            }
+            
             .grid-cols-8 {
-                grid-template-columns: 3fr repeat(7, minmax(28px, 1fr)) !important;
+                grid-template-columns: 5fr repeat(7, minmax(28px, 1fr)) !important;
             }
             
             .habit-cell {
-                height: 32px !important;
-                width: 32px !important;
+                height: 36px !important;
+                width: 36px !important;
+                margin: 1px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            .habit-cell.completed::after {
+                font-size: 18px;
             }
             
             .habit-name-input {
-                font-size: 14px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 120px;
-                padding: 6px 2px;
+                font-size: 16px !important;
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
+                min-width: 150px;
+                max-width: 100%;
+                padding: 10px 4px;
+                height: auto;
+                line-height: 1.3;
             }
             
             /* Extra spacing voor habit rows */
             .habit-row {
-                margin-bottom: 12px !important;
+                margin-bottom: 16px !important;
                 border-bottom: 1px solid rgba(0,0,0,0.05);
-                padding-bottom: 12px;
+                padding-bottom: 16px;
+                display: grid;
+                grid-template-columns: 5fr repeat(7, minmax(28px, 1fr)) !important;
             }
             
             /* Make dates smaller */
@@ -349,9 +371,38 @@
                 margin-bottom: 6px;
             }
             
+            /* Meer ruimte voor naam-invoerveld */
+            .habit-name-cell {
+                display: flex;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                margin-bottom: 5px;
+                min-height: 60px !important;
+                justify-content: center;
+            }
+            
+            .habit-name-cell .flex-grow {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
             /* Kleinere delete-knop voor habits op mobiel */
             .habit-name-cell .fa-trash-alt {
-                font-size: 12px;
+                font-size: 16px;
+                margin-top: 5px;
+            }
+            
+            /* Grotere knoppen voor toevoegen van habits */
+            .add-habit-btn {
+                padding: 12px !important;
+                font-size: 15px;
+                font-weight: 500;
+            }
+            
+            /* Week navigatie knoppen groter en duidelijker */
+            .btn {
+                padding: 8px 15px !important;
+                font-size: 16px;
             }
         }
         
@@ -618,6 +669,7 @@
         // Habit name cell
         const nameCell = document.createElement('div');
         nameCell.className = 'pr-2 flex items-center justify-between habit-name-cell';
+        nameCell.style.minHeight = '50px';
         
         const nameWrapper = document.createElement('div');
         nameWrapper.className = 'flex-grow';
