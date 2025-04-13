@@ -244,6 +244,48 @@
       // Login state observer
       let currentUser = null;
       
+      // Wacht tot het document geladen is
+      document.addEventListener('DOMContentLoaded', function() {
+        // Voeg event listeners toe aan de knoppen
+        document.getElementById('logout-btn').addEventListener('click', function() {
+          auth.signOut().then(() => {
+            window.location.href = 'login.html';
+          }).catch((error) => {
+            console.error("Uitlogfout:", error);
+            alert("Er is een fout opgetreden bij het uitloggen. Probeer het opnieuw.");
+          });
+        });
+        
+        // Navigation event handlers
+        document.getElementById('prev-week').addEventListener('click', function() {
+          weekOffset--;
+          updateDateRow();
+        });
+        
+        document.getElementById('next-week').addEventListener('click', function() {
+          weekOffset++;
+          updateDateRow();
+        });
+        
+        document.getElementById('current-week').addEventListener('click', function() {
+          weekOffset = 0;
+          updateDateRow();
+        });
+        
+        // Add new habit functionality
+        document.getElementById('add-hardline').addEventListener('click', function() {
+          addNewHabit('hardline');
+        });
+        
+        document.getElementById('add-mainline').addEventListener('click', function() {
+          addNewHabit('mainline');
+        });
+        
+        document.getElementById('add-softline').addEventListener('click', function() {
+          addNewHabit('softline');
+        });
+      });
+      
       // Controleer of gebruiker is ingelogd
       auth.onAuthStateChanged(async function(user) {
         if (!user) {
@@ -262,16 +304,6 @@
         // Laad gebruikersdata en render
         await loadUserData();
         updateDateRow();
-      });
-      
-      // Uitloggen
-      document.getElementById('logout-btn').addEventListener('click', function() {
-        auth.signOut().then(() => {
-          window.location.href = 'login.html';
-        }).catch((error) => {
-          console.error("Uitlogfout:", error);
-          alert("Er is een fout opgetreden bij het uitloggen. Probeer het opnieuw.");
-        });
       });
       
       // Initializing habit data structure
@@ -660,36 +692,7 @@
         document.getElementById('total-streak').textContent = currentStreak;
       }
       
-      // Navigation event handlers
-      document.getElementById('prev-week').addEventListener('click', function() {
-        weekOffset--;
-        updateDateRow();
-      });
-      
-      document.getElementById('next-week').addEventListener('click', function() {
-        weekOffset++;
-        updateDateRow();
-      });
-      
-      document.getElementById('current-week').addEventListener('click', function() {
-        weekOffset = 0;
-        updateDateRow();
-      });
-      
       // Add new habit functionality
-      document.getElementById('add-hardline').addEventListener('click', function() {
-        addNewHabit('hardline');
-      });
-      
-      document.getElementById('add-mainline').addEventListener('click', function() {
-        addNewHabit('mainline');
-      });
-      
-      document.getElementById('add-softline').addEventListener('click', function() {
-        addNewHabit('softline');
-      });
-      
-      // Function to add a new habit
       function addNewHabit(category) {
         // Generate a unique ID based on timestamp
         const newId = `${category[0]}${Date.now()}`;
