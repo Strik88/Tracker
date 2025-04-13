@@ -6,11 +6,38 @@
     <title>Striks Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .logout-btn:hover {
+            background-color: #bd2130;
+        }
+        
+        @media (max-width: 600px) {
+            .logout-btn {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
         <header>
             <h1>Striks Tracker</h1>
+            <button id="logout-btn" class="logout-btn">Uitloggen</button>
         </header>
         
         <main>
@@ -33,5 +60,19 @@
     </div>
     
     <script src="app.js"></script>
+    <script>
+        // Controleer login status
+        document.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+            
+            // Uitlog knop functionaliteit
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = 'login.html';
+            });
+        });
+    </script>
 </body>
 </html> 
