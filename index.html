@@ -181,6 +181,41 @@
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
+        
+        .logout-btn {
+            background-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .user-welcome {
+            display: flex;
+            align-items: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .user-icon {
+            background-color: rgba(255, 255, 255, 0.2);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body class="p-6">
@@ -198,7 +233,7 @@
                             <h3 class="text-xl font-bold">Total Streak Power</h3>
                             <div class="text-4xl font-bold mt-1 pulse" id="total-streak">0</div>
                         </div>
-                        <div class="ml-6">
+                        <div class="ml-6 relative">
                             <svg width="80" height="80" viewBox="0 0 100 100">
                                 <circle cx="50" cy="50" r="45" fill="none" stroke="#ffffff33" stroke-width="8" />
                                 <circle class="progress-ring" cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="8" 
@@ -206,6 +241,17 @@
                             </svg>
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-2xl font-bold" id="total-percentage">0%</div>
                         </div>
+                    </div>
+                    <div class="flex justify-end items-center mt-2">
+                        <div class="user-welcome">
+                            <div class="user-icon">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <span id="username-display"></span>
+                        </div>
+                        <button id="logout-btn" class="logout-btn">
+                            <i class="fas fa-sign-out-alt mr-1"></i> Uitloggen
+                        </button>
                     </div>
                 </div>
             </div>
@@ -330,6 +376,23 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Set username display
+            const username = localStorage.getItem('username') || 'Gebruiker';
+            document.getElementById('username-display').textContent = username;
+            
+            // Logout button functionality
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('username');
+                window.location.href = 'login.html';
+            });
+            
             // Initializing habit data structure
             const habitData = {
                 hardline: [
