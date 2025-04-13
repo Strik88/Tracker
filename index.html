@@ -6,23 +6,25 @@
     <title>Striks AI - Habit Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #0055A4;
-            --secondary-color: #3498DB;
-            --accent-color: #21D4FD;
-            --hardline-color: #E74C3C;
-            --mainline-color: #3498DB;
-            --softline-color: #2ECC71;
-            --bg-color: #F8FAFC;
+            /* Striks AI Merkkleurenpalet */
+            --primary-color: #1A2B50; /* Striks Marineblauw */
+            --secondary-color: #3BC5C9; /* AI Turquoise */
+            --accent-color: #C64B8C; /* Menselijk Magenta */
+            --hardline-color: #F27052; /* Zonsopgang Oranje */
+            --mainline-color: #4B99D2; /* Oceaan Blauw */
+            --softline-color: #8A4E85; /* Diep Paars */
+            --bg-color: #F7F9FC; /* Lichtgrijs */
             --card-bg: #FFFFFF;
             --text-primary: #1E293B;
             --text-secondary: #64748B;
+            --highlight-color: #F9B854; /* Gouden Inzicht */
         }
         
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             min-height: 100vh;
@@ -115,7 +117,7 @@
         }
         
         .streak-badge {
-            background: linear-gradient(135deg, #0055A4, #21D4FD);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
             border-radius: 12px;
             padding: 4px 12px;
@@ -127,7 +129,7 @@
         .softline { background-color: var(--softline-color); }
         
         .streak-container {
-            background: linear-gradient(135deg, #0055A4, #21D4FD);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             border-radius: 16px;
         }
         
@@ -217,6 +219,40 @@
             margin-right: 8px;
         }
         
+        /* Branding elementen */
+        .logo-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo {
+            height: 50px;
+            margin-right: 15px;
+        }
+        
+        .tagline {
+            font-weight: 300;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        /* CTA knoppen in Striks stijl */
+        .striks-btn {
+            background: linear-gradient(135deg, var(--accent-color), var(--highlight-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .striks-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1);
+        }
+        
         /* Responsive styling voor mobiele apparaten */
         @media (max-width: 768px) {
             .grid-cols-8 {
@@ -266,6 +302,11 @@
                 justify-content: center;
                 align-items: center;
                 padding: 10px;
+            }
+            
+            .logo {
+                height: 40px;
+                margin-bottom: 10px;
             }
         }
     </style>
@@ -360,6 +401,13 @@
       
       // Initializing habit data structure
       const habitData = {
+        hardline: [],
+        mainline: [],
+        softline: []
+      };
+      
+      // Standaard habits - deze worden alleen gebruikt als de gebruiker nog geen data heeft
+      const defaultHabits = {
         hardline: [
           { id: 'h1', name: 'Morning Meditation', completed: {} },
           { id: 'h2', name: 'Exercise 30 minutes', completed: {} },
@@ -422,19 +470,24 @@
             const userData = userDoc.data();
             
             if (userData.habits) {
-              // Voeg de opgeslagen gegevens samen met de standaardstructuur
+              // Gebruik de opgeslagen habits direct
               ['hardline', 'mainline', 'softline'].forEach(category => {
                 if (userData.habits[category]) {
-                  userData.habits[category].forEach((habit, index) => {
-                    if (index < 5) { // Beperk tot 5 gewoontes per categorie
-                      habitData[category][index] = habit;
-                    }
-                  });
+                  habitData[category] = userData.habits[category];
                 }
               });
+            } else {
+              // Als er geen habits zijn, gebruik de standaard habits
+              ['hardline', 'mainline', 'softline'].forEach(category => {
+                habitData[category] = [...defaultHabits[category]];
+              });
+              await saveUserData(); // Sla standaard habits op
             }
           } else {
-            // Als de gebruiker geen document heeft, voeg dan toe met standaardgegevens
+            // Als de gebruiker geen document heeft, maak een nieuw aan met standaard habits
+            ['hardline', 'mainline', 'softline'].forEach(category => {
+              habitData[category] = [...defaultHabits[category]];
+            });
             await saveUserData();
           }
         } catch (error) {
@@ -786,9 +839,12 @@
         <!-- Header -->
         <header class="mb-8">
             <div class="flex md:flex-row flex-col justify-between items-center">
-                <div class="text-center md:text-left">
-                    <h1 class="text-3xl font-bold text-gray-800">Striks AI Habit Tracker</h1>
-                    <p class="text-gray-600">Human Led AI Innovation</p>
+                <div class="text-center md:text-left logo-container">
+                    <img src="https://raw.githubusercontent.com/Strik88/Tracker/master/Log.png" alt="Striks AI Logo" class="logo">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Habit Tracker</h1>
+                        <p class="tagline">Human Led AI Innovation</p>
+                    </div>
                 </div>
                 <div class="streak-container p-4 text-white mt-4 md:mt-0 w-full md:w-auto">
                     <div class="flex items-center justify-between">
@@ -828,7 +884,7 @@
                     <button id="prev-week" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <button id="current-week" class="btn bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded">
+                    <button id="current-week" class="btn bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded" style="background-color: var(--primary-color);">
                         Today
                     </button>
                     <button id="next-week" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded">
@@ -857,7 +913,7 @@
         <div class="grid grid-cols-1 gap-8">
             <!-- Hardline Habits Section -->
             <div class="card p-6">
-                <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center">
+                <div class="category-header bg-red-500 text-white p-3 mb-4 flex justify-between items-center" style="background-color: var(--hardline-color);">
                     <h2 class="text-xl font-bold">Hardline Habits</h2>
                     <div class="flex items-center">
                         <span class="mr-2">Completion:</span>
@@ -867,14 +923,14 @@
                 <div class="hardline-habits" id="hardline-habits">
                     <!-- Hardline habits will be inserted here by JavaScript -->
                 </div>
-                <button id="add-hardline" class="mt-3 p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded flex items-center add-habit-btn">
+                <button id="add-hardline" class="mt-3 p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded flex items-center add-habit-btn" style="background-color: rgba(242, 112, 82, 0.15); color: var(--hardline-color);">
                     <i class="fas fa-plus mr-2"></i> Nieuwe hardline habit toevoegen
                 </button>
             </div>
             
             <!-- Mainline Habits Section -->
             <div class="card p-6">
-                <div class="category-header bg-blue-500 text-white p-3 mb-4 flex justify-between items-center">
+                <div class="category-header bg-blue-500 text-white p-3 mb-4 flex justify-between items-center" style="background-color: var(--mainline-color);">
                     <h2 class="text-xl font-bold">Mainline Habits</h2>
                     <div class="flex items-center">
                         <span class="mr-2">Completion:</span>
@@ -884,14 +940,14 @@
                 <div class="mainline-habits" id="mainline-habits">
                     <!-- Mainline habits will be inserted here by JavaScript -->
                 </div>
-                <button id="add-mainline" class="mt-3 p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center add-habit-btn">
+                <button id="add-mainline" class="mt-3 p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center add-habit-btn" style="background-color: rgba(75, 153, 210, 0.15); color: var(--mainline-color);">
                     <i class="fas fa-plus mr-2"></i> Nieuwe mainline habit toevoegen
                 </button>
             </div>
             
             <!-- Softline Habits Section -->
             <div class="card p-6">
-                <div class="category-header bg-green-500 text-white p-3 mb-4 flex justify-between items-center">
+                <div class="category-header bg-green-500 text-white p-3 mb-4 flex justify-between items-center" style="background-color: var(--softline-color);">
                     <h2 class="text-xl font-bold">Softline Habits</h2>
                     <div class="flex items-center">
                         <span class="mr-2">Completion:</span>
@@ -901,7 +957,7 @@
                 <div class="softline-habits" id="softline-habits">
                     <!-- Softline habits will be inserted here by JavaScript -->
                 </div>
-                <button id="add-softline" class="mt-3 p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded flex items-center add-habit-btn">
+                <button id="add-softline" class="mt-3 p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded flex items-center add-habit-btn" style="background-color: rgba(138, 78, 133, 0.15); color: var(--softline-color);">
                     <i class="fas fa-plus mr-2"></i> Nieuwe softline habit toevoegen
                 </button>
             </div>
@@ -912,28 +968,28 @@
             <h2 class="text-2xl font-bold mb-4">Weekly Summary</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-gray-100 p-4 rounded-lg">
-                    <h3 class="text-lg font-semibold text-red-500 mb-2">Hardline Progress</h3>
+                    <h3 class="text-lg font-semibold text-red-500 mb-2" style="color: var(--hardline-color);">Hardline Progress</h3>
                     <div class="flex items-center">
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-red-500 h-2.5 rounded-full" id="hardline-progress" style="width: 0%"></div>
+                            <div class="bg-red-500 h-2.5 rounded-full" id="hardline-progress" style="width: 0%; background-color: var(--hardline-color);"></div>
                         </div>
                         <span class="ml-2 text-lg font-bold" id="hardline-count">0/0</span>
                     </div>
                 </div>
                 <div class="bg-gray-100 p-4 rounded-lg">
-                    <h3 class="text-lg font-semibold text-blue-500 mb-2">Mainline Progress</h3>
+                    <h3 class="text-lg font-semibold text-blue-500 mb-2" style="color: var(--mainline-color);">Mainline Progress</h3>
                     <div class="flex items-center">
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-blue-500 h-2.5 rounded-full" id="mainline-progress" style="width: 0%"></div>
+                            <div class="bg-blue-500 h-2.5 rounded-full" id="mainline-progress" style="width: 0%; background-color: var(--mainline-color);"></div>
                         </div>
                         <span class="ml-2 text-lg font-bold" id="mainline-count">0/0</span>
                     </div>
                 </div>
                 <div class="bg-gray-100 p-4 rounded-lg">
-                    <h3 class="text-lg font-semibold text-green-500 mb-2">Softline Progress</h3>
+                    <h3 class="text-lg font-semibold text-green-500 mb-2" style="color: var(--softline-color);">Softline Progress</h3>
                     <div class="flex items-center">
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-green-500 h-2.5 rounded-full" id="softline-progress" style="width: 0%"></div>
+                            <div class="bg-green-500 h-2.5 rounded-full" id="softline-progress" style="width: 0%; background-color: var(--softline-color);"></div>
                         </div>
                         <span class="ml-2 text-lg font-bold" id="softline-count">0/0</span>
                     </div>
@@ -943,6 +999,17 @@
         
         <footer class="mt-10 text-center text-gray-500 text-sm">
             <p>Striks AI Consulting © 2023 - Human Led AI Innovation</p>
+            <div class="mt-2 flex justify-center items-center">
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a href="#" class="mx-2 text-gray-400 hover:text-gray-600 transition-colors duration-300">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
         </footer>
     </div>
 </body>
