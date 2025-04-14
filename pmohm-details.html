@@ -250,16 +250,16 @@
                 // User is logged in
                 currentUser = user;
                 
-                // Load user data
-                await loadUserData();
+                // Load user data but don't calculate stats automatically
+                await loadUserDataWithoutCalculation();
                 renderCalendar();
                 renderStats();
                 renderStreakTimeline();
             });
         });
         
-        // Load user data from Firebase
-        async function loadUserData() {
+        // Load user data without automatic calculation
+        async function loadUserDataWithoutCalculation() {
             try {
                 if (!currentUser) return;
                 
@@ -289,8 +289,8 @@
                         if (pmohmData.avgLast5 === undefined) pmohmData.avgLast5 = 0;
                         if (pmohmData.apexRatio === undefined) pmohmData.apexRatio = 0;
                         
-                        // Calculate streaks and stats
-                        calculatePMOHMStreak();
+                        // Do NOT calculate streaks automatically - only display what's stored
+                        // calculatePMOHMStreak(); - removed this line
                     }
                 }
             } catch (error) {
@@ -333,7 +333,7 @@
                 pmohmData.completedDates[dateString] = true;
             }
             
-            // Calculate streaks and stats
+            // Only calculate streaks when user explicitly makes a change
             calculatePMOHMStreak();
             
             // Save data

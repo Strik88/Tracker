@@ -640,8 +640,8 @@
               if (pmohmData.avgLast5 === undefined) pmohmData.avgLast5 = 0;
               if (pmohmData.apexRatio === undefined) pmohmData.apexRatio = 0;
               
-              // Bereken huidige streak
-              calculatePMOHMStreak();
+              // Niet automatisch herberekenen bij laden van de pagina
+              // calculatePMOHMStreak();  - verwijderd
             }
           } else {
             // Als de gebruiker geen document heeft, maak een nieuw aan met standaard habits
@@ -1211,7 +1211,7 @@
           pmohmData.completedDates[date] = true;
         }
         
-        // Update PMOHM streak information
+        // Alleen berekenen wanneer gebruiker expliciet een wijziging maakt
         calculatePMOHMStreak();
         
         // Save data
